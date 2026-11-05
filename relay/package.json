@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test ../tests/protocol.test.mjs"
+    "test": "node --test ../tests/protocol.test.mjs integration.test.mjs"
   },
   "dependencies": {
     "ws": "^8.18.0"
