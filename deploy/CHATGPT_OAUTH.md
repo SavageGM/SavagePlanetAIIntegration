@@ -29,6 +29,7 @@ $env:MCP_AUTH_MODE = 'oauth'
 $env:OAUTH_ISSUER = 'https://login.example.org/'
 $env:OAUTH_AUDIENCE = 'https://mcp.example.org/mcp'
 $env:OAUTH_JWKS_URI = 'https://login.example.org/.well-known/jwks.json'
+$env:OAUTH_ALLOWED_SUBJECT = 'YOUR_GM_PROVIDER_ACCOUNT_SUBJECT'
 $env:OAUTH_REQUIRED_SCOPE = 'gurps:read'
 $env:BRIDGE_ALLOWED_ORIGINS = 'https://savagegm-tpm.forge-vtt.com'
 $env:HOST = '127.0.0.1'
@@ -49,7 +50,7 @@ npm install
 npm test
 ```
 
-The automated tests cover OAuth metadata, signature verification, audience and scope restrictions as well as the existing read-only relay and WebSocket tests. No real access tokens are needed for these tests.
+The automated tests cover OAuth metadata, signature verification, audience and scope and single-GM subject restrictions as well as the existing read-only relay and WebSocket tests. No real access tokens are needed for these tests.
 
 When hosted with OAuth mode, verify:
 
