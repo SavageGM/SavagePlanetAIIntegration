@@ -5,9 +5,19 @@ import {resolve} from 'node:path';
 import {WebSocketServer} from 'ws';
 import {handleMcp} from './protocol.mjs';
 import {validateTool} from './operations.mjs';
+import {createOAuthResource} from './oauth-resource.mjs';
 const {BRIDGE_TOKEN,MCP_TOKEN}=process.env;
-if(!BRIDGE_TOKEN||!MCP_TOKEN||BRIDGE_TOKEN.length<32||MCP_TOKEN.length<32||BRIDGE_TOKEN===MCP_TOKEN)
- throw new Error('Set different BRIDGE_TOKEN and MCP_TOKEN secrets, 32+ characters each');
+const authMode=process.env.MCP_AUTH_MODE??'token';
+if(!['token','oauth'].includes(authMode))throw new Error('MCP_AUTH_MODE must be token or oauth');
+if(!BRIDGE_TOKEN||BRIDGE_TOKEN.length<32)throw new Error('BRIDGE_TOKEN must be 32+ characters');
+if(authMode==='token'&&(!MCP_TOKEN||MCP_TOKEN.length<32||BRIDGE_TOKEN===MCP_TOKEN))
+ throw new Error('Token mode requires different BRIDGE_TOKEN and MCP_TOKEN secrets, 32+ characters each');
+const oauth=authMode==='oauth'?createOAuthResource({
+ issuer:process.env.OAUTH_ISSUER,
+ audience:process.env.OAUTH_AUDIENCE,
+ jwksUri:process.env.OAUTH_JWKS_URI,
+ requiredScope:process.env.OAUTH_REQUIRED_SCOPE??'gurps:read'
+}):null;
 const HOST=process.env.HOST??'127.0.0.1',PORT=Number(process.env.PORT??8787);
 const allowedOrigins=(process.env.BRIDGE_ALLOWED_ORIGINS??'').split(',').map(x=>x.trim()).filter(Boolean);
 if(!allowedOrigins.length)throw new Error('Set BRIDGE_ALLOWED_ORIGINS to the exact Forge GM page origin before starting the relay');
@@ -41,10 +51,19 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
  const wss=new WebSocketServer({noServer:true,maxPayload:1024*1024,perMessageDeflate:false});
  const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
+  if(oauth&&req.method==='GET'&&(req.url==='/.well-known/oauth-protected-resource'||req.url==='/.well-known/oauth-protected-resource/mcp')){
+   res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*'});
+   res.end(JSON.stringify(oauth.metadata));return;
+  }
   if(req.url!=='/mcp'){res.writeHead(404);res.end();return;}
   if(req.method!=='POST'){res.setHeader('Allow','POST');res.writeHead(405);res.end();return;}
-  const token=req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-  if(!equals(token,MCP_TOKEN)){res.writeHead(401,{'WWW-Authenticate':'Bearer'});res.end();return;}
+  const token=req.headers.authorization?.match(/^Bearer ([^ ]+)$/)?.[1];
+  const auth=oauth?await oauth.verify(token):{ok:equals(token,MCP_TOKEN),reason:'invalid_token'};
+  if(!auth.ok){
+   const challenge=oauth?oauth.challenge():'Bearer';
+   res.writeHead(auth.reason==='insufficient_scope'?403:401,{'WWW-Authenticate':challenge});
+   res.end();return;
+  }
   if(!String(req.headers['content-type']??'').startsWith('application/json')){res.writeHead(415);res.end();return;}
   try{const msg=JSON.parse(await readBody(req));const response=await handleMcp(msg,broker);
    res.setHeader('MCP-Protocol-Version','2025-06-18');
