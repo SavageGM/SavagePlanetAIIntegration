@@ -37,7 +37,7 @@ export function extractActor(input,runtimeSystem=null,installedGGA=null){
  const encumbrance=entries(s.encumbrance).map(([key,e])=>({key,level:num(e.level),current:Boolean(e.current),dodge:num(e.dodge),move:num(e.move)}));
  const activeEnc=encumbrance.find(e=>e.current);
  const itemSummary=(Array.isArray(a.items)?a.items:[]).reduce((map,i)=>(map[i.type??'unknown']=(map[i.type??'unknown']??0)+1,map),{});
- const data={schema:'savage-planet.gga.actor.v0.1.1',identity:{id:a._id??a.id??null,name:a.name??'',type:a.type??null},
+ const data={schema:'savage-planet.gga.actor.v0.1.1',identity:{id:a._id??a.id??(/^Actor\.[A-Za-z0-9]{16}$/.test(a._stats?.exportSource?.uuid??'')?a._stats.exportSource.uuid.slice(6):null),name:a.name??'',type:a.type??null},
  provenance:{exportedWithGGA:a._stats?.exportSource?.systemVersion??null,documentGGA:a._stats?.systemVersion??null,
   installedGGA:installedGGA??null,foundry:a._stats?.exportSource?.coreVersion??a._stats?.coreVersion??null,
   gcsImport:val(s.additionalresources?.importname),lastImport:val(s.lastImport),runtimeCompared:!!runtime},
