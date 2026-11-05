@@ -1,0 +1,6 @@
+.spai-overlay{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px;color:#e8e3d6}
+.spai-dialog{width:min(880px,96vw);height:min(820px,92vh);background:#1d262d;border:1px solid #778991;border-radius:10px;box-shadow:0 18px 60px #000;display:flex;flex-direction:column;padding:18px;gap:12px}
+.spai-header{display:flex;align-items:center;justify-content:space-between}.spai-header h2{margin:0;font-size:1.3rem;color:#f2dca9}.spai-header button{font-size:22px;width:42px}
+.spai-dialog button,.spai-dialog select{background:#30444e;color:#f5f3ec;border:1px solid #82949d;border-radius:5px;padding:7px 10px;cursor:pointer}
+.spai-help{margin:0;color:#bfcbd1}.spai-toolbar{display:flex;gap:10px}.spai-toolbar select{flex:1}.spai-body{overflow-y:auto;flex:1;min-height:0}.spai-body h3{margin:6px 0 10px;color:#f2dca9}
+.spai-section{border:1px solid #546b76;margin:8px 0;border-radius:5px}.spai-section summary{padding:8px 10px;cursor:pointer;font-weight:600}.spai-section pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#e3e8e9;background:#10191d;padding:12px;margin:0;font-family:ui-monospace,monospace;font-size:12px;max-height:270px;overflow:auto}.spai-actions{margin:12px 0}
