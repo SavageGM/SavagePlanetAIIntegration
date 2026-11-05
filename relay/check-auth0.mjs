@@ -1,3 +1,5 @@
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
 // Read-only Auth0 configuration diagnostic. Does not exchange tokens or change a tenant.
 // Use a dedicated Auth0 tenant. Never provide client secrets to this script.
 export function inspectAuth0Discovery(discovery,{issuer,audience}={}){
