@@ -16,6 +16,7 @@ const oauth=authMode==='oauth'?createOAuthResource({
  issuer:process.env.OAUTH_ISSUER,
  audience:process.env.OAUTH_AUDIENCE,
  jwksUri:process.env.OAUTH_JWKS_URI,
+ allowedSubject:process.env.OAUTH_ALLOWED_SUBJECT,
  requiredScope:process.env.OAUTH_REQUIRED_SCOPE??'gurps:read'
 }):null;
 const HOST=process.env.HOST??'127.0.0.1',PORT=Number(process.env.PORT??8787);
