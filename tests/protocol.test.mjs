@@ -24,3 +24,12 @@ test('notifications and offline responses',async()=>{
  const answer=await handleMcp(call('tools/call',{name:'listActors',arguments:{}}),offline);
  assert.equal(answer.result.isError,true);
 });
+
+test('OAuth mode advertises all six tool security requirements',async()=>{
+ const response=await handleMcp(call('tools/list'),broker,{oauthScope:'gurps:read'});
+ assert.equal(response.result.tools.length,6);
+ for(const tool of response.result.tools){
+  assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:['gurps:read']}]);
+  assert.equal(tool.annotations.readOnlyHint,true);
+ }
+});
