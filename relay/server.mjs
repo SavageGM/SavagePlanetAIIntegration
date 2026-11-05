@@ -65,7 +65,7 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
    res.end();return;
   }
   if(!String(req.headers['content-type']??'').startsWith('application/json')){res.writeHead(415);res.end();return;}
-  try{const msg=JSON.parse(await readBody(req));const response=await handleMcp(msg,broker);
+  try{const msg=JSON.parse(await readBody(req));const response=await handleMcp(msg,broker,oauth?{oauthScope:oauth.requiredScope}:{});
    res.setHeader('MCP-Protocol-Version','2025-06-18');
    if(response===null){res.writeHead(202);res.end();return;}
    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(response));
