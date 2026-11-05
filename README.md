@@ -45,3 +45,7 @@ Source: `scripts/actor-operations.mjs`, `scripts/bridge.mjs`, `relay/operations.
 Tests include MCP tool validation and Belladonna actor extraction. Full WebSocket integration tests require the relay's `ws` dependency installed.
 
 This is unofficial fan-made software, not endorsed by Steve Jackson Games or the GGA authors.
+
+## Production-style relay deployment
+
+A persistent Docker + Caddy TLS reverse-proxy configuration is now available in [deploy/](deploy/README.md). The relay must run on an always-on host with DNS and inbound HTTPS; it is **not** deployed by publishing the GitHub repository. Keep the external Foundry bridge disabled until the host, domain, and separate credentials are configured. The current module version remains 0.2.0; no Foundry update is required for this documentation-only deployment addition.
