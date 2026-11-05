@@ -2,7 +2,7 @@ import {createRemoteJWKSet,jwtVerify} from 'jose';
 
 // OAuth resource-server mode. An independent OAuth 2.1 provider handles
 // authorization code, PKCE, login, consent, token issuance and refresh.
-export function createOAuthResource(config) {
+export function createOAuthResource(config,{keyResolver=null}={}) {
  const {issuer,audience,jwksUri,requiredScope='gurps:read'}=config;
  function secureURL(raw,label) {
   const url=new URL(raw);
@@ -16,7 +16,7 @@ export function createOAuthResource(config) {
  if(!/^[a-zA-Z][a-zA-Z0-9:._-]{2,80}$/.test(requiredScope))throw new Error('Invalid OAuth scope');
  const normalizedIssuer=issuerURL.href.replace(/\/$/,'');
  const metadataURL=new URL('/.well-known/oauth-protected-resource',resourceURL.origin).href;
- const keys=createRemoteJWKSet(keysURL);
+ const keys=keyResolver??createRemoteJWKSet(keysURL);
  const metadata=Object.freeze({
   resource:resourceURL.href,
   authorization_servers:[normalizedIssuer],
