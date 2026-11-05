@@ -8,6 +8,7 @@ if(!BRIDGE_TOKEN||!MCP_TOKEN||BRIDGE_TOKEN.length<32||MCP_TOKEN.length<32||BRIDG
  throw new Error('Set different BRIDGE_TOKEN and MCP_TOKEN secrets, 32+ characters each');
 const HOST=process.env.HOST??'127.0.0.1',PORT=Number(process.env.PORT??8787);
 const allowedOrigins=(process.env.BRIDGE_ALLOWED_ORIGINS??'').split(',').map(x=>x.trim()).filter(Boolean);
+if(!allowedOrigins.length)throw new Error('Set BRIDGE_ALLOWED_ORIGINS to the exact Forge GM page origin before starting the relay');
 const equals=(a,b)=>{if(typeof a!=='string'||typeof b!=='string')return false;const x=crypto.createHash('sha256').update(a).digest(),y=crypto.createHash('sha256').update(b).digest();return crypto.timingSafeEqual(x,y);};
 const readBody=req=>new Promise((resolve,reject)=>{let data='',total=0;req.on('data',chunk=>{total+=chunk.length;if(total>100000){reject(new Error('Request too large'));req.destroy();return;}data+=chunk;});req.on('end',()=>resolve(data));req.on('error',reject);});
 export class BridgeBroker{
@@ -50,7 +51,7 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
   }catch{if(!res.writableEnded){res.writeHead(400);res.end(JSON.stringify({error:'Invalid JSON or request'}));}}
  });
  server.on('upgrade',(req,socket,head)=>{
-  if(req.url!=='/bridge'||(allowedOrigins.length>0&&!allowedOrigins.includes(req.headers.origin??''))){socket.destroy();return;}
+  if(req.url!=='/bridge'||!allowedOrigins.includes(req.headers.origin??'')){socket.destroy();return;}
   wss.handleUpgrade(req,socket,head,ws=>{
    ws.on('error',()=>{});
    const timer=setTimeout(()=>ws.close(4003,'Handshake timed out'),8000);
