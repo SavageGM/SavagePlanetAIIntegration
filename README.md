@@ -1,40 +1,38 @@
 # Savage Planet AI Integration
 
-## Savage Planet AI Adapter v0.1.0
+## Savage Planet AI Adapter v0.1.1
 
-Read-only GM diagnostics module for **Foundry VTT v14 Stable 11 (Build 369)** with **GURPS Game Aid 0.18.27**.
+GM-only, read-only GURPS Game Aid diagnostics for Foundry v14 Build 369 and GGA 0.18.27.
 
-### Capabilities
-- Inspect actor attributes, HP, FP, defenses, advantages, disadvantages, skills, attacks, equipment, and hit-location DR.
-- Export a reduced diagnostic JSON document.
-- Display validation warnings for potentially stale or ambiguous imported data.
+### The GGA attribute distinction
+GGA's actor preparation in `module/actor/actor.js` copies `system.attributes.*.import` into the working `value` before applying item modifiers. The serialized export can retain default `value: 10` while `import` contains the correct GCS value. This **does not prove** the live character uses 10.
 
-**Not yet implemented:** MCP, external ChatGPT access, in-Foundry AI chat, GURPS actions, character writes, Scabard synchronization.
+v0.1.1 shows:
+- **Imported**: GCS-origin value stored under `import`.
+- **Stored**: serialized `value` field from `actor.toObject()`.
+- **Runtime**: effective value from the prepared live `actor.system`.
+- **Source metadata**: current installed GGA, historical document version, and version recorded in the export.
 
-### Installation
-1. Back up the Foundry world.
-2. Put the contents of this repository in `Data/modules/savage-planet-ai-adapter/` (with `module.json` at the root).
-3. Restart Foundry; enable the module in a GURPS world.
-4. Create a **Script Macro** using `OPEN_DIAGNOSTICS_MACRO.js`, then execute it as GM.
+Validation reports **PASS**, **INFO**, **WARN** or **FAIL** separately and does not overwrite character data.
 
-### JavaScript API
+### Installation from manifest
+`https://raw.githubusercontent.com/SavageGM/SavagePlanetAIIntegration/main/module.json`
+
+### Usage
+Enable the module in Foundry. Run a Script Macro:
 
 ```js
-const api = game.modules.get('savage-planet-ai-adapter').api;
-api.openDiagnostics();
-const diagnostic = api.getActorDiagnostic('ACTOR_ID');
+game.modules.get("savage-planet-ai-adapter").api.openDiagnostics();
 ```
 
-### Regression test
-
+### Test
 ```bash
-node tests/test-extraction.mjs /path/to/GGA-export.json
+node tests/test-extraction.mjs "/path/to/Belladonna Marshall.json" "/path/to/Gia Segarra.json"
 ```
 
-The test checks Gia Segarra reference actor values. Do not commit character exports containing private campaign information to a public repository.
-
-### Security
-v0.1 is local, GM-facing and read-only. Exported JSON is **not anonymized**. No external endpoint is enabled.
-
-### License
-Original Savage Planet adapter code is MIT licensed. Not affiliated with Steve Jackson Games or GGA.
+### Important limitations
+- This is a local read-only diagnostic module, **not yet** an external MCP or AI chat integration.
+- Tests against supplied actor files passed; test the live actor in Foundry after updating.
+- Active advantages, temporary effects, and equipment may alter runtime values.
+- JSON diagnostic exports may reveal private campaign information; do not publish them.
+- The adapter is not affiliated with Steve Jackson Games or the GGA developers.
