@@ -33,7 +33,7 @@ export async function fetchAuth0Discovery(issuer,fetcher=fetch){
  if(!response.ok)throw new Error('Auth0 discovery failed: HTTP '+response.status);
  return response.json();
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1].replaceAll('\\','/')).href){
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const issuer=process.env.OAUTH_ISSUER;
  const audience=process.env.OAUTH_AUDIENCE;
  if(!issuer||!audience){console.error('Set OAUTH_ISSUER and OAUTH_AUDIENCE first. Do not provide credentials.');process.exitCode=2;}
