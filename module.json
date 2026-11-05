@@ -1,0 +1,36 @@
+{
+  "id": "savage-planet-ai-adapter",
+  "title": "Savage Planet AI Adapter",
+  "description": "Read-only GURPS Game Aid actor diagnostics for Savage Planet",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "Savage Planet Tools"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14.369",
+    "maximum": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "gurps",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.18.27"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/adapter.js"
+  ],
+  "styles": [
+    "styles/adapter.css"
+  ],
+  "manifest": "https://raw.githubusercontent.com/SavageGM/SavagePlanetAIIntegration/main/module.json",
+  "download": "https://github.com/SavageGM/SavagePlanetAIIntegration/releases/download/v0.1.0/savage-planet-ai-adapter.zip",
+  "readme": "https://github.com/SavageGM/SavagePlanetAIIntegration#readme"
+}
