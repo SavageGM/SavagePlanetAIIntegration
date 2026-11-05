@@ -31,6 +31,6 @@
     "styles/adapter.css"
   ],
   "manifest": "https://raw.githubusercontent.com/SavageGM/SavagePlanetAIIntegration/main/module.json",
-  "download": "https://github.com/SavageGM/SavagePlanetAIIntegration/releases/download/v0.1.0/savage-planet-ai-adapter.zip",
+  "download": "https://raw.githubusercontent.com/SavageGM/SavagePlanetAIIntegration/main/dist/savage-planet-ai-adapter.zip",
   "readme": "https://github.com/SavageGM/SavagePlanetAIIntegration#readme"
 }
