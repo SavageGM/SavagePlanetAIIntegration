@@ -65,3 +65,9 @@ npm test
 **CI status:** GitHub Actions jobs have failed before exposing execution steps, so automated test success has **not** been independently verified. Review the Actions run before treating the relay as production-ready.
 
 **Required server configuration:** Set `BRIDGE_ALLOWED_ORIGINS` to the exact origin of the Forge GM page. The relay now refuses to start if this allowlist is blank, even for local testing. Both `BRIDGE_TOKEN` and `MCP_TOKEN` must be different and 32+ characters. Keep the Foundry module's bridge disabled until a secure relay is running.
+
+## Verify Phase 2 from within Foundry (no relay required)
+
+The GM-only [v0.2 smoke test Script Macro](tests/FOUNDRY_SMOKE_TEST.js) exercises all six read-only operations against Belladonna Marshall (`Ow9mrwRNhmKZuXbc`), validates imported GCS values, and verifies that write operations are refused. Paste the contents into a Foundry **Script** macro and run it with the world loaded as GM. A results dialog and browser console report PASS / FAIL. **This macro makes no external requests and does not enable the bridge.**
+
+A passing local test establishes the Foundry half of the integration. It does not establish that the external Node relay has deployed or that an MCP client can access your live world.
