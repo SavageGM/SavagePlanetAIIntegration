@@ -1,4 +1,6 @@
 import {extractActor,validateActor} from './extract.mjs';
+import {executeReadOperation} from './actor-operations.mjs';
+import {bridge} from './bridge.mjs';
 const MODULE='savage-planet-ai-adapter';let panel;
 const el=(tag,cls='',text)=>{const e=document.createElement(tag);e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
 function requireGM(){if(!game.user?.isGM)throw new Error('GM permission required');}
@@ -24,7 +26,7 @@ function render(body,actor){
 function openDiagnostics(){
  requireGM();if(panel?.isConnected){panel.focus();return;}
  panel=el('div','spai-overlay');panel.tabIndex=-1;const d=el('section','spai-dialog');d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
- const head=el('header','spai-header');head.append(el('h2','','Savage Planet AI Adapter v0.1.1'));const close=el('button','','×');close.onclick=()=>panel.remove();head.append(close);
+ const head=el('header','spai-header');head.append(el('h2','','Savage Planet AI Adapter v0.2.0'));const close=el('button','','×');close.onclick=()=>panel.remove();head.append(close);
  d.append(head,el('p','spai-help','GM-only read-only GGA diagnostics: imported, stored and effective values are distinct.'));
  const bar=el('div','spai-toolbar'),select=el('select'),actors=[...game.actors.contents].filter(a=>a.type==='character').sort((a,b)=>a.name.localeCompare(b.name));
  for(const a of actors){const opt=el('option','',a.name);opt.value=a.id;select.append(opt);}
@@ -32,4 +34,4 @@ function openDiagnostics(){
  const show=()=>{const a=game.actors.get(select.value);if(a)render(body,a);else body.replaceChildren(el('p','','No character actors found.'));};
  select.onchange=show;button.onclick=show;panel.onclick=e=>{if(e.target===panel)panel.remove();};panel.onkeydown=e=>{if(e.key==='Escape')panel.remove();};panel.append(d);document.body.append(panel);show();panel.focus();
 }
-Hooks.once('ready',()=>{if(!game.user?.isGM)return;const mod=game.modules.get(MODULE);if(mod)mod.api=Object.freeze({openDiagnostics,extractActor,validateActor,getActorDiagnostic(id){requireGM();const actor=game.actors.get(id);if(!actor)throw new Error('Actor not found');return inspect(actor);}});console.info('[Savage Planet AI Adapter] v0.1.1 ready');});
+Hooks.once('ready',()=>{if(!game.user?.isGM)return;const mod=game.modules.get(MODULE);if(mod)mod.api=Object.freeze({openDiagnostics,extractActor,validateActor,getActorDiagnostic(id){requireGM();const actor=game.actors.get(id);if(!actor)throw new Error('Actor not found');return inspect(actor);}});console.info('[Savage Planet AI Adapter] v0.2.0 ready');});
