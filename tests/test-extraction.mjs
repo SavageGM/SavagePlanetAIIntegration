@@ -1,0 +1,17 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {extractActor,validateActor} from '../scripts/extract.mjs';
+const path=process.argv[2];if(!path)throw new Error('Pass a GGA actor export JSON path');
+const d=extractActor(JSON.parse(readFileSync(path,'utf8')));
+assert.equal(d.identity.name,'Gia Segarra');
+assert.equal(d.attributes.ST.value,12);
+assert.equal(d.resources.HP.current,12);
+assert.equal(d.defenses.dodge,10);
+assert.equal(d.skills.find(x=>x.name==='Tracking').level,20);
+assert.equal(d.skills.find(x=>x.name==='Stealth').level,18);
+assert.equal(d.attacks.melee.length,3);
+assert.equal(d.equipment.carried.length,0);
+assert.equal(d.hitLocations.find(x=>x.name==='Skull').dr,2);
+assert.equal(d.pointTotal,300);
+assert.ok(validateActor(d).every(x=>x.passed));
+console.log('PASS: Gia Segarra extraction');
