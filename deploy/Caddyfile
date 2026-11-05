@@ -1,0 +1,10 @@
+{$RELAY_DOMAIN} {
+  encode zstd gzip
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    Referrer-Policy no-referrer
+    Cache-Control no-store
+  }
+  reverse_proxy relay:8787
+}
