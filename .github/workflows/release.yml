@@ -1,0 +1,35 @@
+name: Package Foundry module
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and package module
+        shell: bash
+        run: |
+          python3 -m json.tool module.json >/dev/null
+          mkdir -p /tmp/savage-planet-ai-adapter
+          cp module.json OPEN_DIAGNOSTICS_MACRO.js README.md /tmp/savage-planet-ai-adapter/
+          cp -R scripts styles /tmp/savage-planet-ai-adapter/
+          cd /tmp
+          zip -r "$GITHUB_WORKSPACE/savage-planet-ai-adapter.zip" savage-planet-ai-adapter
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" savage-planet-ai-adapter.zip --title "Savage Planet AI Adapter ${GITHUB_REF_NAME}" --notes "GM-only read-only GGA diagnostics for Foundry v14."
+      - name: Upload dispatch artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: savage-planet-ai-adapter
+          path: savage-planet-ai-adapter.zip
