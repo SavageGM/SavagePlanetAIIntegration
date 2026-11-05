@@ -49,3 +49,19 @@ This is unofficial fan-made software, not endorsed by Steve Jackson Games or the
 ## Production-style relay deployment
 
 A persistent Docker + Caddy TLS reverse-proxy configuration is now available in [deploy/](deploy/README.md). The relay must run on an always-on host with DNS and inbound HTTPS; it is **not** deployed by publishing the GitHub repository. Keep the external Foundry bridge disabled until the host, domain, and separate credentials are configured. The current module version remains 0.2.0; no Foundry update is required for this documentation-only deployment addition.
+
+## Automated relay validation (November 5, 2026)
+
+The repository now includes `relay/integration.test.mjs` (authenticated MCP and simulated GM WebSocket round-trip) and `.github/workflows/relay-tests.yml` (CI). The test runs an MCP `tools/call` for Belladonna actor ID `Ow9mrwRNhmKZuXbc`, simulates a GM answer, and verifies the structured result. It also checks unauthenticated MCP access and invalid actor ID rejection.
+
+To run these locally, with Node.js 22 or newer:
+
+```bash
+cd relay
+npm install
+npm test
+```
+
+**CI status:** GitHub Actions jobs have failed before exposing execution steps, so automated test success has **not** been independently verified. Review the Actions run before treating the relay as production-ready.
+
+**Required server configuration:** Set `BRIDGE_ALLOWED_ORIGINS` to the exact origin of the Forge GM page. The relay now refuses to start if this allowlist is blank, even for local testing. Both `BRIDGE_TOKEN` and `MCP_TOKEN` must be different and 32+ characters. Keep the Foundry module's bridge disabled until a secure relay is running.
