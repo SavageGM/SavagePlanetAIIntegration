@@ -3,7 +3,8 @@ import {createRemoteJWKSet,jwtVerify} from 'jose';
 // OAuth resource-server mode. An independent OAuth 2.1 provider handles
 // authorization code, PKCE, login, consent, token issuance and refresh.
 export function createOAuthResource(config,{keyResolver=null}={}) {
- const {issuer,audience,jwksUri,requiredScope='gurps:read'}=config;
+ const {issuer,audience,jwksUri,allowedSubject,requiredScope='gurps:read'}=config;
+ if(typeof allowedSubject!=='string'||!allowedSubject.trim()||allowedSubject.length>256)throw new Error('OAUTH_ALLOWED_SUBJECT must identify the single GM identity');
  function secureURL(raw,label) {
   const url=new URL(raw);
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash) throw new Error(label+' must be a clean HTTPS URL');
@@ -39,6 +40,7 @@ export function createOAuthResource(config,{keyResolver=null}={}) {
      ...(Array.isArray(payload.scp)?payload.scp:[])
     ]);
     if(!scopes.has(requiredScope))return {ok:false,reason:'insufficient_scope'};
+    if(payload.sub!==allowedSubject)return {ok:false,reason:'invalid_token'};
     return {ok:true,subject:payload.sub};
    }catch{return {ok:false,reason:'invalid_token'};}
   }
