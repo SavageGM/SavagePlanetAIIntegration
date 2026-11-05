@@ -1,5 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
 import {WebSocketServer} from 'ws';
 import {handleMcp} from './protocol.mjs';
 import {validateTool} from './operations.mjs';
@@ -64,4 +66,4 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
  server.listen(port,host,()=>console.log('Savage Planet MCP relay listening '+host+':'+server.address().port+'; configure TLS reverse proxy for external use'));
  return {server,broker,close:()=>new Promise(resolve=>{broker.client?.close();wss.close(()=>server.close(resolve));})};
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href)startServer();
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)startServer();
