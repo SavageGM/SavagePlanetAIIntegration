@@ -71,3 +71,7 @@ npm test
 The GM-only [v0.2 smoke test Script Macro](tests/FOUNDRY_SMOKE_TEST.js) exercises all six read-only operations against Belladonna Marshall (`Ow9mrwRNhmKZuXbc`), validates imported GCS values, and verifies that write operations are refused. Paste the contents into a Foundry **Script** macro and run it with the world loaded as GM. A results dialog and browser console report PASS / FAIL. **This macro makes no external requests and does not enable the bridge.**
 
 A passing local test establishes the Foundry half of the integration. It does not establish that the external Node relay has deployed or that an MCP client can access your live world.
+
+## Windows PC live test (Cloudflare Quick Tunnel)
+
+For a temporary no-VPS setup, follow [Windows Quick Tunnel instructions](deploy/WINDOWS_QUICK_TUNNEL.md). The procedure generates separate secrets, starts the local Node relay, tunnels HTTPS/WSS without opening router ports, connects a Forge GM session, and tests Belladonna through MCP. The Quick Tunnel is public-facing and suitable for short tests only. Disable the Foundry bridge and close the tunnel when finished.
