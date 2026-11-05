@@ -75,3 +75,7 @@ A passing local test establishes the Foundry half of the integration. It does no
 ## Windows PC live test (Cloudflare Quick Tunnel)
 
 For a temporary no-VPS setup, follow [Windows Quick Tunnel instructions](deploy/WINDOWS_QUICK_TUNNEL.md). The procedure generates separate secrets, starts the local Node relay, tunnels HTTPS/WSS without opening router ports, connects a Forge GM session, and tests Belladonna through MCP. The Quick Tunnel is public-facing and suitable for short tests only. Disable the Foundry bridge and close the tunnel when finished.
+
+## Phase 2.5 — OAuth preparation (experimental)
+
+The Node relay now supports optional `MCP_AUTH_MODE=oauth` with JWT access-token verification (fixed HTTPS issuer and JWKS, resource audience, `gurps:read` scope, expiration and a single `OAUTH_ALLOWED_SUBJECT` GM identity). The default token mode remains unchanged, so the successful Windows PowerShell workflow still works after `git pull` and `npm install`. See [ChatGPT OAuth setup and limitations](deploy/CHATGPT_OAUTH.md). **No authorization server or OAuth login is bundled, and this is not yet a tested ChatGPT connector.** Foundry module remains 0.2.0; no Foundry update is required for relay-only changes.
