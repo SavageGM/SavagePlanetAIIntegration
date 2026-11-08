@@ -61,7 +61,7 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
   const token=req.headers.authorization?.match(/^Bearer ([^ ]+)$/)?.[1];
   const auth=oauth?await oauth.verify(token):{ok:equals(token,MCP_TOKEN),reason:'invalid_token'};
   if(!auth.ok){
-   console.warn('MCP authentication rejected:', auth.reason);
+   console.warn('MCP authentication rejected:', auth.reason, auth.diagnostic??'');
    const challenge=oauth?oauth.challenge():'Bearer';
    res.writeHead(auth.reason==='insufficient_scope'?403:401,{'WWW-Authenticate':challenge});
    res.end();return;
