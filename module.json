@@ -2,7 +2,7 @@
   "id": "savage-planet-ai-adapter",
   "title": "Savage Planet AI Adapter",
   "description": "GM-only read-only GGA diagnostics with opt-in authenticated MCP bridge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "authors": [
     {
       "name": "Savage Planet Tools"
