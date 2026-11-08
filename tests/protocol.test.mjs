@@ -13,10 +13,16 @@ test('MCP initialize/list',async()=>{
 test('read-only calls and strict arguments',async()=>{
  const good=await handleMcp(call('tools/call',{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc'}}),broker);
  assert.equal(good.result.structuredContent.ST,9);
- for(const args of [{name:'updateActor',arguments:{}},{name:'getActor',arguments:{actorId:'bad'}},{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc',extra:true}},{name:'listJournals',arguments:{extra:true}}]){
+ for(const args of [{name:'updateActor',arguments:{}},{name:'getActor',arguments:{actorId:'bad'}},{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc',extra:true}},{name:'listJournals',arguments:{extra:true}},{name:'listJournals',arguments:{limit:201}},{name:'listJournals',arguments:{offset:-1}},{name:'listJournals',arguments:{query:''}},{name:'listJournals',arguments:{folderId:'bad'}}]){
   const response=await handleMcp(call('tools/call',args),broker);
   assert.equal(response.error.code,-32602);
  }
+});
+test('journal pagination and filter arguments',async()=>{
+ const response=await handleMcp(call('tools/call',{name:'listJournals',arguments:{offset:200,limit:75,query:'  Cheyenne  ',folderId:'RyqHyckQHV6Hy9fa'}}),broker);
+ assert.deepEqual(response.result.structuredContent.args,{offset:200,limit:75,query:'Cheyenne',folderId:'RyqHyckQHV6Hy9fa'});
+ const defaults=await handleMcp(call('tools/call',{name:'listJournals',arguments:{}}),broker);
+ assert.deepEqual(defaults.result.structuredContent.args,{offset:0,limit:100});
 });
 test('notifications and offline responses',async()=>{
  assert.equal(await handleMcp({jsonrpc:'2.0',method:'notifications/initialized'},broker),null);
