@@ -7,7 +7,7 @@ export async function handleMcp(message,broker,options={}){
  if(!Object.hasOwn(message,'id'))return null;
  const {id,method,params={}}=message;
  if(typeof method!=='string')return error(id,-32600,'Invalid method');
- if(method==='initialize')return result(id,{protocolVersion:MCP_PROTOCOL,capabilities:{tools:{listChanged:false}},serverInfo:{name:'savage-planet-foundry',version:'0.2.0'},instructions:'GM-only, read-only GURPS Game Aid character data. No writes supported.'});
+ if(method==='initialize')return result(id,{protocolVersion:MCP_PROTOCOL,capabilities:{tools:{listChanged:false}},serverInfo:{name:'savage-planet-foundry',version:'0.3.1'},instructions:'GM-only read-only GURPS character and journal-directory data from the connected Foundry world. No writes supported.'});
  if(method==='ping')return result(id,{});
  if(method==='tools/list')return result(id,{tools:options.oauthScope?TOOLS.map(t=>({...t,_meta:{securitySchemes:[{type:'oauth2',scopes:[options.oauthScope]}]}})):TOOLS});
  if(method==='tools/call'){let name,args;try{name=params?.name;args=validateTool(name,params?.arguments??{});}catch(e){return error(id,-32602,String(e.message));}
