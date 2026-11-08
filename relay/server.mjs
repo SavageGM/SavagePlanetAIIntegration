@@ -1,5 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {WebSocketServer} from 'ws';
@@ -23,19 +25,31 @@ const HOST=process.env.HOST??'127.0.0.1',PORT=Number(process.env.PORT??8787);
 const allowedOrigins=(process.env.BRIDGE_ALLOWED_ORIGINS??'').split(',').map(x=>x.trim()).filter(Boolean);
 if(!allowedOrigins.length)throw new Error('Set BRIDGE_ALLOWED_ORIGINS to the exact Forge GM page origin before starting the relay');
 const equals=(a,b)=>{if(typeof a!=='string'||typeof b!=='string')return false;const x=crypto.createHash('sha256').update(a).digest(),y=crypto.createHash('sha256').update(b).digest();return crypto.timingSafeEqual(x,y);};
+// Local-only status file for the Windows control panel; no bridge secret or public route.
+const bridgeStatusFile=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'SavagePlanet','Relay','bridge-status.json'):null;
+function writeBridgeStatus(connected){
+ if(!bridgeStatusFile)return;
+ try{
+  fs.mkdirSync(join(process.env.LOCALAPPDATA,'SavagePlanet','Relay'),{recursive:true});
+  const temp=bridgeStatusFile+'.'+process.pid+'.tmp';
+  fs.writeFileSync(temp,JSON.stringify({pid:process.pid,connected,updatedAt:new Date().toISOString()}));
+  fs.renameSync(temp,bridgeStatusFile);
+ }catch(e){console.warn('Local bridge status update failed:',e?.code??'unknown');}
+}
 const readBody=req=>new Promise((resolve,reject)=>{let data='',total=0;req.on('data',chunk=>{total+=chunk.length;if(total>100000){reject(new Error('Request too large'));req.destroy();return;}data+=chunk;});req.on('end',()=>resolve(data));req.on('error',reject);});
 export class BridgeBroker{
  constructor(){this.client=null;this.pending=new Map();}
  attach(ws){
   if(this.client){ws.close(1013,'Another GM is connected');return false;}
   this.client=ws;
+  writeBridgeStatus(true);
   ws.on('message',raw=>{let msg;try{msg=JSON.parse(raw.toString());}catch{return;}
    if(msg.kind!=='response'||typeof msg.id!=='string')return;const p=this.pending.get(msg.id);if(!p)return;
    this.pending.delete(msg.id);clearTimeout(p.timer);
    if(msg.ok===true&&msg.result&&typeof msg.result==='object')p.resolve(msg.result);
    else p.reject(new Error(String(msg.error??'Foundry request failed').slice(0,250)));
   });
-  ws.on('close',()=>{if(this.client!==ws)return;this.client=null;for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new Error('Foundry disconnected'));}this.pending.clear();});
+  ws.on('close',()=>{if(this.client!==ws)return;this.client=null;writeBridgeStatus(false);for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new Error('Foundry disconnected'));}this.pending.clear();});
   return true;
  }
  request(name,args){validateTool(name,args);if(!this.client||this.client.readyState!==1)return Promise.reject(new Error('Foundry GM is not connected'));
@@ -49,6 +63,7 @@ export class BridgeBroker{
  }
 }
 export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
+ writeBridgeStatus(false);
  const wss=new WebSocketServer({noServer:true,maxPayload:1024*1024,perMessageDeflate:false});
  const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -85,6 +100,6 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
   });
  });
  server.listen(port,host,()=>console.log('Savage Planet MCP relay listening '+host+':'+server.address().port+'; configure TLS reverse proxy for external use'));
- return {server,broker,close:()=>new Promise(resolve=>{broker.client?.close();wss.close(()=>server.close(resolve));})};
+ return {server,broker,close:()=>new Promise(resolve=>{broker.client?.close();writeBridgeStatus(false);wss.close(()=>server.close(resolve));})};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)startServer();
