@@ -6,7 +6,7 @@ const journalListSchema={type:'object',properties:{
  limit:{type:'integer',minimum:1,maximum:200,description:'Entries per page (default 100, maximum 200)'},
  query:{type:'string',minLength:1,maxLength:100,description:'Case-insensitive journal title substring filter'},
  folderId:{type:'string',pattern:'^[A-Za-z0-9]{16}$',description:'Filter by 16-character journal folder ID'}
-},additionalProperties:false};
+},required:['offset','limit'],additionalProperties:false};
 const descriptions={getActor:'Read a GGA character summary, prepared attributes, defenses and validation (read-only).',listActors:'List character actor IDs and names visible to the GM (read-only).',getSkills:'Read prepared and imported GURPS skills for one actor (read-only).',getAttacks:'Read melee and ranged GURPS attack data for one actor (read-only).',getEquipment:'Read GGA carried and other equipment collections (read-only).',getHitLocations:'Read GURPS hit location DR and targeting modifiers (read-only).',listJournals:'Paginate and filter journal entry IDs, titles, and folder IDs in the connected GM world (read-only; no page content).'};
 export const TOOLS=NAMES.map(name=>({name,description:descriptions[name],inputSchema:name==='listJournals'?journalListSchema:name==='listActors'?listSchema:actorSchema,annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false}}));
 export function validateTool(name,args){
