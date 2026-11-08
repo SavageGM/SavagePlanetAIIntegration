@@ -28,10 +28,10 @@ export function createOAuthResource(config,{keyResolver=null}={}) {
   metadata,metadataURL,requiredScope,
   challenge(){return 'Bearer resource_metadata="'+metadataURL+'", scope="'+requiredScope+'"';},
   async verify(token){
-   if(typeof token!=='string'||token.length>8192||!token)return {ok:false,reason:'invalid_token'};
+   if(typeof token!=='string'||token.length>8192||!token)return {ok:false,reason:'invalid_token',diagnostic:'missing_or_malformed_bearer'};
    try {
     const {payload}=await jwtVerify(token,keys,{
-     issuer:normalizedIssuer,audience:resourceURL.href,
+     issuer:issuerURL.href,audience:resourceURL.href,
      algorithms:['RS256','ES256'],clockTolerance:'30 seconds',
      requiredClaims:['sub','exp','iat']
     });
@@ -40,9 +40,13 @@ export function createOAuthResource(config,{keyResolver=null}={}) {
      ...(Array.isArray(payload.scp)?payload.scp:[])
     ]);
     if(!scopes.has(requiredScope))return {ok:false,reason:'insufficient_scope'};
-    if(payload.sub!==allowedSubject)return {ok:false,reason:'invalid_token'};
+    if(payload.sub!==allowedSubject)return {ok:false,reason:'invalid_token',diagnostic:'subject_mismatch'};
     return {ok:true,subject:payload.sub};
-   }catch{return {ok:false,reason:'invalid_token'};}
+   }catch(e){
+    const code=typeof e?.code==='string'&&/^ERR_[A-Z_]+$/.test(e.code)?e.code:'verification_error';
+    const claim=['iss','aud','exp','nbf','iat','sub'].includes(e?.claim)?e.claim:null;
+    return {ok:false,reason:'invalid_token',diagnostic:claim?code+':'+claim:code};
+   }
   }
  };
 }
