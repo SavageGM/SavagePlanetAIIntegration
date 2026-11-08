@@ -21,7 +21,7 @@ test('MCP and authenticated bridge roundtrip',async()=>{
  try{
   const denied=await fetch(base+'/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
   assert.equal(denied.status,401);
-  assert.equal((await call('tools/list')).result.tools.length,6);
+  assert.equal((await call('tools/list')).result.tools.length,7);
   assert.equal((await call('tools/call',{name:'getActor',arguments:{actorId:'bad'}})).error.code,-32602);
   socket=new WebSocket('ws://127.0.0.1:'+port+'/bridge',{headers:{Origin:'http://localhost:3000'}});
   await new Promise((resolve,reject)=>{socket.once('open',resolve);socket.once('error',reject);});
