@@ -7,13 +7,13 @@ test('MCP initialize/list',async()=>{
  const initialized=await handleMcp(call('initialize'),broker);
  assert.equal(initialized.result.protocolVersion,'2025-06-18');
  const tools=(await handleMcp(call('tools/list'),broker)).result.tools;
- assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations']);
+ assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals']);
  assert.ok(tools.every(x=>x.annotations.readOnlyHint));
 });
 test('read-only calls and strict arguments',async()=>{
  const good=await handleMcp(call('tools/call',{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc'}}),broker);
  assert.equal(good.result.structuredContent.ST,9);
- for(const args of [{name:'updateActor',arguments:{}},{name:'getActor',arguments:{actorId:'bad'}},{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc',extra:true}}]){
+ for(const args of [{name:'updateActor',arguments:{}},{name:'getActor',arguments:{actorId:'bad'}},{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc',extra:true}},{name:'listJournals',arguments:{extra:true}}]){
   const response=await handleMcp(call('tools/call',args),broker);
   assert.equal(response.error.code,-32602);
  }
@@ -25,9 +25,9 @@ test('notifications and offline responses',async()=>{
  assert.equal(answer.result.isError,true);
 });
 
-test('OAuth mode advertises all six tool security requirements',async()=>{
+test('OAuth mode advertises all seven tool security requirements',async()=>{
  const response=await handleMcp(call('tools/list'),broker,{oauthScope:'gurps:read'});
- assert.equal(response.result.tools.length,6);
+ assert.equal(response.result.tools.length,7);
  for(const tool of response.result.tools){
   assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:['gurps:read']}]);
   assert.equal(tool.annotations.readOnlyHint,true);
