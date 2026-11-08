@@ -79,3 +79,11 @@ For a temporary no-VPS setup, follow [Windows Quick Tunnel instructions](deploy/
 ## Phase 2.5 — OAuth preparation (experimental)
 
 The Node relay now supports optional `MCP_AUTH_MODE=oauth` with JWT access-token verification (fixed HTTPS issuer and JWKS, resource audience, `gurps:read` scope, expiration and a single `OAUTH_ALLOWED_SUBJECT` GM identity). The default token mode remains unchanged, so the successful Windows PowerShell workflow still works after `git pull` and `npm install`. See [ChatGPT OAuth setup and limitations](deploy/CHATGPT_OAUTH.md). **No authorization server or OAuth login is bundled, and this is not yet a tested ChatGPT connector.** Foundry module remains 0.2.0; no Foundry update is required for relay-only changes.
+
+
+## Journal listing (v0.3.1)
+
+`listJournals` returns read-only journal entry IDs, titles and folder IDs from the currently connected Foundry world. It supports `offset` (default 0), `limit` (default 100, maximum 200), a case-insensitive journal-title `query`, and an optional 16-character `folderId`. Responses include `total`, `hasMore`, `nextOffset`, and `world: { id, title }`; page bodies and secret journal contents are not transferred by this tool.
+
+**Multiple worlds:** Install and enable the same adapter in each GURPS world you want to use. The operations use the active Foundry `game` context and do not hard-code any world. **The current relay supports one connected GM world at a time**, so switch worlds by closing the previous GM session before connecting the next one. Journal IDs are scoped to their world; use the returned world identity to avoid confusing similarly named entries across worlds. Concurrent multiworld connections and a `listWorlds` / `worldId` selector require a separate relay-router upgrade and are not available in this release.
+
