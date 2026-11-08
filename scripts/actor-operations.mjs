@@ -6,8 +6,19 @@ function actorById(game,id){if(typeof id!=='string'||!/^[a-zA-Z0-9]{16}$/.test(i
 export function executeReadOperation(game,name,args={}){
  authorize(game);if(!OP_NAMES.includes(name))throw new Error('Unknown or forbidden operation');
  if(name==='listJournals'){
-  const journals=[...game.journal.contents].sort((a,b)=>a.name.localeCompare(b.name));
-  return {journals:journals.slice(0,500).map(j=>({id:j.id,name:j.name,folderId:j.folder?.id??null})),total:journals.length,truncated:journals.length>500};
+  const {offset=0,limit=100,query,folderId}=args;
+  if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>200)throw new Error('Invalid journal pagination');
+  if(query!==undefined&&(typeof query!=='string'||query.trim().length<1||query.length>100))throw new Error('Invalid journal query');
+  if(folderId!==undefined&&(typeof folderId!=='string'||!/^[A-Za-z0-9]{16}$/.test(folderId)))throw new Error('Invalid journal folder ID');
+  if(Object.keys(args).some(k=>!['offset','limit','query','folderId'].includes(k)))throw new Error('Unsupported journal argument');
+  const needle=query?.trim().toLocaleLowerCase();
+  const journals=[...game.journal.contents]
+   .filter(j=>(!needle||j.name.toLocaleLowerCase().includes(needle))&&(!folderId||j.folder?.id===folderId))
+   .sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
+  const total=journals.length,hasMore=offset+limit<total;
+  return {world:{id:game.world?.id??null,title:game.world?.title??null},
+   journals:journals.slice(offset,offset+limit).map(j=>({id:j.id,name:j.name,folderId:j.folder?.id??null})),
+   total,offset,limit,hasMore,nextOffset:hasMore?offset+limit:null,truncated:hasMore};
  }
  if(name==='listActors'){const list=[...game.actors.contents].filter(a=>a.type==='character').sort((a,b)=>a.name.localeCompare(b.name));
  return {actors:list.slice(0,500).map(a=>({id:a.id,name:a.name,type:a.type})),total:list.length,truncated:list.length>500};}
