@@ -20,16 +20,16 @@ test('OAuth metadata and RS256 validation, scope and audience', async()=>{
  assert.match(auth.challenge(),/resource_metadata=/);
  const sign=(claims={})=>new SignJWT({scope:'gurps:read',...claims})
   .setProtectedHeader({alg:'RS256',kid:'test-kid'})
-  .setIssuer(issuer).setAudience(audience).setSubject('single-gm')
+  .setIssuer(issuer+'/').setAudience(audience).setSubject('single-gm')
   .setIssuedAt().setExpirationTime('5m').sign(privateKey);
  assert.deepEqual(await auth.verify(await sign()),{ok:true,subject:'single-gm'});
  assert.equal((await auth.verify(await sign({scope:'other:read'}))).reason,'insufficient_scope');
  const wrongAud=await new SignJWT({scope:'gurps:read'}).setProtectedHeader({alg:'RS256',kid:'test-kid'})
-  .setIssuer(issuer).setAudience('https://another.example/mcp').setSubject('single-gm')
+  .setIssuer(issuer+'/').setAudience('https://another.example/mcp').setSubject('single-gm')
   .setIssuedAt().setExpirationTime('5m').sign(privateKey);
  assert.equal((await auth.verify(wrongAud)).reason,'invalid_token');
  assert.equal((await auth.verify('not-a-jwt')).reason,'invalid_token');
- const other=await new SignJWT({scope:'gurps:read'}).setProtectedHeader({alg:'RS256',kid:'test-kid'}).setIssuer(issuer).setAudience(audience).setSubject('not-gm').setIssuedAt().setExpirationTime('5m').sign(privateKey);
+ const other=await new SignJWT({scope:'gurps:read'}).setProtectedHeader({alg:'RS256',kid:'test-kid'}).setIssuer(issuer+'/').setAudience(audience).setSubject('not-gm').setIssuedAt().setExpirationTime('5m').sign(privateKey);
  assert.equal((await auth.verify(other)).reason,'invalid_token');
 });
 test('OAuth mode rejects insecure or malformed resource settings',()=>{
