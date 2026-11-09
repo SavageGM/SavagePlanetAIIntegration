@@ -1,4 +1,4 @@
-import {executeReadOperation,OP_NAMES} from './actor-operations.mjs';
+import {executeOperation,OP_NAMES} from './actor-operations.mjs';
 const ID='savage-planet-ai-adapter';
 let socket=null,state='disabled',retryTimer=null,lastError=null,attempts=0,stopping=false;
 const setting=key=>game.settings.get(ID,key);
@@ -25,13 +25,13 @@ function connect(){
  if(socket){const old=socket;socket=null;old.onclose=null;old.close();}
  state='connecting';lastError=null;const ws=new WebSocket(url);socket=ws;
  ws.onopen=()=>{if(socket===ws){state='authenticating';ws.send(JSON.stringify({kind:'hello',token:secret,protocol:1}));}};
- ws.onmessage=event=>{if(socket!==ws)return;
+ ws.onmessage=async event=>{if(socket!==ws)return;
   let msg;try{msg=JSON.parse(event.data);}catch{ws.close(1003,'Invalid JSON');return;}
   if(msg.kind==='ready'){state='connected';attempts=0;lastError=null;return;}
   if(msg.kind==='error'){lastError=String(msg.message??'Remote error').slice(0,200);return;}
   if(msg.kind!=='request'||state!=='connected')return;
   if(typeof msg.id!=='string'||msg.id.length>100||!OP_NAMES.includes(msg.operation))return;
-  let reply;try{reply={kind:'response',id:msg.id,ok:true,result:executeReadOperation(game,msg.operation,msg.args)};}
+  let reply;try{reply={kind:'response',id:msg.id,ok:true,result:await executeOperation(game,msg.operation,msg.args)};}
   catch(err){reply={kind:'response',id:msg.id,ok:false,error:String(err?.message??err).slice(0,200)};}
   if(socket===ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(reply));
  };
@@ -40,7 +40,7 @@ function connect(){
 }
 function register(){
  const settings=[
- ['bridgeEnabled',{name:'Enable external read-only bridge',hint:'GM browser only. Disabled until secure relay is deployed.',type:Boolean,default:false}],
+ ['bridgeEnabled',{name:'Enable external canon bridge',hint:'GM browser only. Reads are allowed; journal creation requires confirmed mappings and explicit authorization. Disabled until the relay is secured.',type:Boolean,default:false}],
  ['bridgeUrl',{name:'Bridge WebSocket URL',hint:'Secure wss:// relay URL ending /bridge. Never include a secret in the URL.',type:String,default:''}],
  ['bridgeToken',{name:'Bridge secret (GM browser only)',hint:'Separate random BRIDGE_TOKEN with 32+ characters. Treat as a password.',type:String,default:''}]
  ];

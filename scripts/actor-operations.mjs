@@ -1,10 +1,14 @@
 import {extractActor,validateActor} from './extract.mjs';
-export const OP_NAMES=Object.freeze(['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals']);
+import {createCanonCharacterJournal,getCanonJournalStatus} from './journal-sync.mjs';
+export const READ_OP_NAMES=Object.freeze(['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals','getCanonJournalStatus']);
+export const WRITE_OP_NAMES=Object.freeze(['createCanonCharacterJournal']);
+export const OP_NAMES=Object.freeze([...READ_OP_NAMES,...WRITE_OP_NAMES]);
 function authorize(game){if(!game?.user?.isGM)throw new Error('GM permission required');if(game.system?.id!=='gurps')throw new Error('GURPS Game Aid required');}
 function actorById(game,id){if(typeof id!=='string'||!/^[a-zA-Z0-9]{16}$/.test(id))throw new Error('Invalid actor ID');
  const a=game.actors.get(id);if(!a||a.type!=='character')throw new Error('Character actor not found');return a;}
 export function executeReadOperation(game,name,args={}){
- authorize(game);if(!OP_NAMES.includes(name))throw new Error('Unknown or forbidden operation');
+ authorize(game);if(!READ_OP_NAMES.includes(name))throw new Error('Unknown or forbidden read operation');
+ if(name==='getCanonJournalStatus')return getCanonJournalStatus(game,args);
  if(name==='listJournals'){
   const {offset=0,limit=100,query,folderId}=args;
   if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>200)throw new Error('Invalid journal pagination');
@@ -28,4 +32,10 @@ export function executeReadOperation(game,name,args={}){
  if(name==='getAttacks')return {actor:data.identity,attacks:data.attacks};
  if(name==='getEquipment')return {actor:data.identity,equipment:data.equipment,itemSummary:data.itemSummary};
  return {actor:data.identity,hitLocations:data.hitLocations};
+}
+export async function executeOperation(game,name,args={}){
+ authorize(game);
+ if(READ_OP_NAMES.includes(name))return executeReadOperation(game,name,args);
+ if(name==='createCanonCharacterJournal')return createCanonCharacterJournal(game,args);
+ throw new Error('Unknown or forbidden operation');
 }

@@ -1,6 +1,6 @@
 {
   "name": "savage-planet-ai-relay",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test ../tests/protocol.test.mjs ../tests/journals.test.mjs integration.test.mjs oauth-resource.test.mjs"
+    "test": "node --test ../tests/protocol.test.mjs ../tests/journals.test.mjs ../tests/journal-sync.test.mjs integration.test.mjs oauth-resource.test.mjs scabard-client.test.mjs canon-registry.test.mjs tool-router.test.mjs"
   },
   "dependencies": {
     "ws": "^8.18.0",

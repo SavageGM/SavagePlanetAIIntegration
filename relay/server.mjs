@@ -6,8 +6,10 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {WebSocketServer} from 'ws';
 import {handleMcp} from './protocol.mjs';
-import {validateTool} from './operations.mjs';
+import {validateBridgeOperation} from './operations.mjs';
 import {createOAuthResource} from './oauth-resource.mjs';
+import {ScabardClient} from './scabard-client.mjs';
+import {ToolRouter} from './tool-router.mjs';
 const {BRIDGE_TOKEN,MCP_TOKEN}=process.env;
 const authMode=process.env.MCP_AUTH_MODE??'token';
 if(!['token','oauth'].includes(authMode))throw new Error('MCP_AUTH_MODE must be token or oauth');
@@ -19,14 +21,15 @@ const oauth=authMode==='oauth'?createOAuthResource({
  audience:process.env.OAUTH_AUDIENCE,
  jwksUri:process.env.OAUTH_JWKS_URI,
  allowedSubject:process.env.OAUTH_ALLOWED_SUBJECT,
- requiredScope:process.env.OAUTH_REQUIRED_SCOPE??'gurps:read'
+ requiredScope:process.env.OAUTH_REQUIRED_SCOPE??'gurps:read',
+ writeScope:process.env.OAUTH_WRITE_SCOPE??'canon:write'
 }):null;
 const HOST=process.env.HOST??'127.0.0.1',PORT=Number(process.env.PORT??8787);
 const allowedOrigins=(process.env.BRIDGE_ALLOWED_ORIGINS??'').split(',').map(x=>x.trim()).filter(Boolean);
 if(!allowedOrigins.length)throw new Error('Set BRIDGE_ALLOWED_ORIGINS to the exact Forge GM page origin before starting the relay');
 const equals=(a,b)=>{if(typeof a!=='string'||typeof b!=='string')return false;const x=crypto.createHash('sha256').update(a).digest(),y=crypto.createHash('sha256').update(b).digest();return crypto.timingSafeEqual(x,y);};
 // Local-only status file for the Windows control panel; no bridge secret or public route.
-const bridgeStatusFile=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'SavagePlanet','Relay','bridge-status.json'):null;
+const bridgeStatusFile=process.env.BRIDGE_STATUS_FILE==='disabled'?null:(process.env.BRIDGE_STATUS_FILE??(process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'SavagePlanet','Relay','bridge-status.json'):null));
 function writeBridgeStatus(connected){
  if(!bridgeStatusFile)return;
  try{
@@ -52,7 +55,7 @@ export class BridgeBroker{
   ws.on('close',()=>{if(this.client!==ws)return;this.client=null;writeBridgeStatus(false);for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new Error('Foundry disconnected'));}this.pending.clear();});
   return true;
  }
- request(name,args){validateTool(name,args);if(!this.client||this.client.readyState!==1)return Promise.reject(new Error('Foundry GM is not connected'));
+ request(name,args){validateBridgeOperation(name,args);if(!this.client||this.client.readyState!==1)return Promise.reject(new Error('Foundry GM is not connected'));
   if(this.pending.size>=16)return Promise.reject(new Error('Too many pending requests'));
   const id=crypto.randomUUID();return new Promise((resolve,reject)=>{
    const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('Foundry request timed out'));},12000);
@@ -62,8 +65,9 @@ export class BridgeBroker{
   });
  }
 }
-export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
+export function startServer({port=PORT,host=HOST,broker=new BridgeBroker(),scabardClient=ScabardClient.fromEnv()}={}){
  writeBridgeStatus(false);
+ const toolRouter=new ToolRouter({foundryBroker:broker,scabardClient});
  const wss=new WebSocketServer({noServer:true,maxPayload:1024*1024,perMessageDeflate:false});
  const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -82,7 +86,11 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker()}={}){
    res.end();return;
   }
   if(!String(req.headers['content-type']??'').startsWith('application/json')){res.writeHead(415);res.end();return;}
-  try{const msg=JSON.parse(await readBody(req));const response=await handleMcp(msg,broker,oauth?{oauthScope:oauth.requiredScope}:{});
+  try{const msg=JSON.parse(await readBody(req));
+   if(oauth&&msg?.method==='tools/call'&&msg?.params?.name==='canonCreateCharacterJournal'&&!auth.scopes?.has(oauth.writeScope)){
+    res.writeHead(403,{'WWW-Authenticate':oauth.challenge(oauth.writeScope)});res.end();return;
+   }
+   const response=await handleMcp(msg,toolRouter,oauth?{oauthScope:oauth.requiredScope,oauthWriteScope:oauth.writeScope}:{});
    res.setHeader('MCP-Protocol-Version','2025-06-18');
    if(response===null){res.writeHead(202);res.end();return;}
    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(response));

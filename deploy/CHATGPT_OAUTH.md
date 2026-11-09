@@ -2,13 +2,13 @@
 
 **Status: resource-server implementation only.** This project does **not** provide its own authorization server, an OAuth login UI, authorization-code+PKCE flow, client registration, or refresh-token issuance. Supply those through a properly configured OAuth 2.1 identity provider. ChatGPT connection and live OAuth login are **not yet tested**.
 
-The installed Foundry module remains v0.2.0. The Node relay package is v0.2.5, and keeps the working legacy static-token mode as default.
+The Foundry module is v0.4.0 and the Node relay package is v0.3.0. Static-token mode remains available.
 
 ## Design
 
 - Foundry GM ↔ relay WebSocket: uses its existing independent `BRIDGE_TOKEN`.
 - External MCP client ↔ relay: choose either `MCP_AUTH_MODE=token` (existing `MCP_TOKEN`) or `MCP_AUTH_MODE=oauth` (signed OAuth access JWTs).
-- OAuth mode validates RS256/ES256 JWT signatures against a fixed HTTPS JWKS URI, exact issuer, exact resource audience, expiration and `gurps:read` scope.
+- OAuth mode validates RS256/ES256 JWT signatures against a fixed HTTPS JWKS URI, exact issuer, exact resource audience, expiration and `gurps:read` scope. Journal creation additionally requires `canon:write`.
 - OAuth mode publishes MCP Protected Resource Metadata at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`. A 401 sends `WWW-Authenticate` with `resource_metadata`.
 - The OAuth provider—not this Node relay—must support authorization-code+PKCE, client identification/registration (CIMD, DCR or pre-registration), refresh tokens when needed, and public authorization-server metadata.
 
@@ -16,7 +16,7 @@ The installed Foundry module remains v0.2.0. The Node relay package is v0.2.5, a
 
 1. Stable public HTTPS/WSS hostname. A random Quick Tunnel cannot serve as a reliable OAuth audience and callback target across restarts.
 2. An OAuth/OIDC identity provider with a supported MCP-compatible registration flow. Configure a single GM account; never grant access to arbitrary internet users.
-3. Configure the provider to issue **signed JWT access tokens** for the exact MCP resource identifier, with audience equal to the public `https://YOUR_HOST/mcp` URL and a `gurps:read` scope.
+3. Configure the provider to issue **signed JWT access tokens** for the exact MCP resource identifier, with audience equal to the public `https://YOUR_HOST/mcp` URL and a `gurps:read` scope. Grant `canon:write` only to the single GM identity that may create journals.
 4. The provider must publish its issuer metadata, authorization endpoint, token endpoint, PKCE/S256 support, client registration/identity mechanisms, and optional offline/refresh support. This relay does not create that discovery endpoint.
 5. The public HTTPS issuer and JWKS origin must match, and JWKS must use trusted certificates.
 
@@ -31,6 +31,7 @@ $env:OAUTH_AUDIENCE = 'https://mcp.example.org/mcp'
 $env:OAUTH_JWKS_URI = 'https://login.example.org/.well-known/jwks.json'
 $env:OAUTH_ALLOWED_SUBJECT = 'YOUR_GM_PROVIDER_ACCOUNT_SUBJECT'
 $env:OAUTH_REQUIRED_SCOPE = 'gurps:read'
+$env:OAUTH_WRITE_SCOPE = 'canon:write'
 $env:BRIDGE_ALLOWED_ORIGINS = 'https://savagegm-tpm.forge-vtt.com'
 $env:HOST = '127.0.0.1'
 $env:PORT = '8787'
@@ -70,4 +71,4 @@ Useful documentation:
 - https://developers.openai.com/plugins/build/auth
 - https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization
 
-**Security:** OAuth does not eliminate the need to protect the GM browser, rotate the bridge secret after exposure, restrict account access at the issuer, protect the relay host, and keep the read-only bridge disabled outside approved sessions.
+**Security:** OAuth does not eliminate the need to protect the GM browser, rotate the bridge secret after exposure, restrict account access at the issuer, protect the relay host, and keep the canon bridge disabled outside approved sessions.

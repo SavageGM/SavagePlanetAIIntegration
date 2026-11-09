@@ -7,8 +7,9 @@ test('MCP initialize/list',async()=>{
  const initialized=await handleMcp(call('initialize'),broker);
  assert.equal(initialized.result.protocolVersion,'2025-06-18');
  const tools=(await handleMcp(call('tools/list'),broker)).result.tools;
- assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals']);
- assert.ok(tools.every(x=>x.annotations.readOnlyHint));
+ assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals','scabardListCampaigns','scabardGetCampaign','scabardListPages','scabardGetPage','canonListMappings','canonGetCharacter','canonCompareCharacter','canonPlanCharacterJournal','canonCreateCharacterJournal']);
+ assert.ok(tools.filter(x=>x.name!=='canonCreateCharacterJournal').every(x=>x.annotations.readOnlyHint));
+ assert.equal(tools.find(x=>x.name==='canonCreateCharacterJournal').annotations.readOnlyHint,false);
 });
 test('read-only calls and strict arguments',async()=>{
  const good=await handleMcp(call('tools/call',{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc'}}),broker);
@@ -17,6 +18,32 @@ test('read-only calls and strict arguments',async()=>{
   const response=await handleMcp(call('tools/call',args),broker);
   assert.equal(response.error.code,-32602);
  }
+ for(const args of [{name:'scabardListCampaigns',arguments:{extra:true}},{name:'scabardGetCampaign',arguments:{campaignId:0}},{name:'scabardListPages',arguments:{campaignId:121,concept:'unknown'}},{name:'scabardGetPage',arguments:{campaignId:121,concept:'character',thingId:'162'}}]){
+  const response=await handleMcp(call('tools/call',args),broker);
+  assert.equal(response.error.code,-32602);
+ }
+ for(const args of [{name:'canonListMappings',arguments:{limit:0}},{name:'canonListMappings',arguments:{query:''}},{name:'canonGetCharacter',arguments:{canonicalId:'bad'}},{name:'canonGetCharacter',arguments:{canonicalId:'character:1',extra:true}},{name:'canonCompareCharacter',arguments:{canonicalId:'bad'}},{name:'canonPlanCharacterJournal',arguments:{canonicalId:'bad'}},{name:'canonCreateCharacterJournal',arguments:{canonicalId:'character:1',confirmation:'yes'}}]){
+  const response=await handleMcp(call('tools/call',args),broker);
+  assert.equal(response.error.code,-32602);
+ }
+});
+test('Scabard arguments are normalized and routed read-only',async()=>{
+ const page=await handleMcp(call('tools/call',{name:'scabardGetPage',arguments:{campaignId:121,concept:'Character',thingId:162}}),broker);
+ assert.deepEqual(page.result.structuredContent.args,{campaignId:121,concept:'character',thingId:162});
+ const campaigns=await handleMcp(call('tools/call',{name:'scabardListCampaigns',arguments:{}}),broker);
+ assert.deepEqual(campaigns.result.structuredContent.args,{});
+});
+test('Canon arguments are normalized and routed read-only',async()=>{
+ const list=await handleMcp(call('tools/call',{name:'canonListMappings',arguments:{query:'  Bella  '}}),broker);
+ assert.deepEqual(list.result.structuredContent.args,{offset:0,limit:100,query:'Bella'});
+ const character=await handleMcp(call('tools/call',{name:'canonGetCharacter',arguments:{canonicalId:'character:4499025'}}),broker);
+ assert.deepEqual(character.result.structuredContent.args,{canonicalId:'character:4499025'});
+ const comparison=await handleMcp(call('tools/call',{name:'canonCompareCharacter',arguments:{canonicalId:'character:4499025'}}),broker);
+ assert.deepEqual(comparison.result.structuredContent.args,{canonicalId:'character:4499025'});
+ const plan=await handleMcp(call('tools/call',{name:'canonPlanCharacterJournal',arguments:{canonicalId:'character:4499025'}}),broker);
+ assert.deepEqual(plan.result.structuredContent.args,{canonicalId:'character:4499025'});
+ const create=await handleMcp(call('tools/call',{name:'canonCreateCharacterJournal',arguments:{canonicalId:'character:4499025',confirmation:'CREATE_MISSING_SCABARD_CHARACTER_JOURNAL'}}),broker);
+ assert.deepEqual(create.result.structuredContent.args,{canonicalId:'character:4499025',confirmation:'CREATE_MISSING_SCABARD_CHARACTER_JOURNAL'});
 });
 test('journal pagination and filter arguments',async()=>{
  const response=await handleMcp(call('tools/call',{name:'listJournals',arguments:{offset:200,limit:75,query:'  Cheyenne  ',folderId:'RyqHyckQHV6Hy9fa'}}),broker);
@@ -31,11 +58,11 @@ test('notifications and offline responses',async()=>{
  assert.equal(answer.result.isError,true);
 });
 
-test('OAuth mode advertises all seven tool security requirements',async()=>{
- const response=await handleMcp(call('tools/list'),broker,{oauthScope:'gurps:read'});
- assert.equal(response.result.tools.length,7);
+test('OAuth mode advertises read and separate write security requirements',async()=>{
+ const response=await handleMcp(call('tools/list'),broker,{oauthScope:'gurps:read',oauthWriteScope:'canon:write'});
+ assert.equal(response.result.tools.length,16);
  for(const tool of response.result.tools){
-  assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:['gurps:read']}]);
-  assert.equal(tool.annotations.readOnlyHint,true);
+  assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:tool.name==='canonCreateCharacterJournal'?['gurps:read','canon:write']:['gurps:read']}]);
  }
+ assert.equal(response.result.tools.find(x=>x.name==='canonCreateCharacterJournal').annotations.readOnlyHint,false);
 });

@@ -9,7 +9,7 @@ This deployment is suitable for an **always-on VPS or other Docker host with inb
 3. Set `BRIDGE_ALLOWED_ORIGINS` to the exact **origin** of your Forge GM page (obtained from your browser's address bar; no path).
 4. From the repository's `deploy/` directory, set `RELAY_DOMAIN` and run `docker compose up -d --build`.
 5. Check `docker compose logs --tail=100 relay` and `docker compose logs --tail=100 caddy` for startup or certificate failures. Do not publish the logs if they contain credentials.
-6. In Foundry's module settings, enter `wss://YOUR_DOMAIN/bridge` and the **bridge** secret. Enable the read-only bridge.
+6. In Foundry's module settings, enter `wss://YOUR_DOMAIN/bridge` and the **bridge** secret. Enable the canon bridge only for approved sessions.
 7. Connect a bearer-token-capable MCP client to `https://YOUR_DOMAIN/mcp` with the **separate MCP** secret. Begin with `tools/list`, then `getActor` for actor ID `Ow9mrwRNhmKZuXbc`.
 
 No credentials should appear in URLs. Caddy handles TLS and forwards WebSocket upgrades automatically.

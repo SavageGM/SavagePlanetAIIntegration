@@ -1,8 +1,8 @@
 {
   "id": "savage-planet-ai-adapter",
   "title": "Savage Planet AI Adapter",
-  "description": "GM-only read-only GGA diagnostics with opt-in authenticated MCP bridge",
-  "version": "0.3.1",
+  "description": "GM-only GGA diagnostics and authenticated Scabard-to-Foundry canon journal sync",
+  "version": "0.4.0",
   "authors": [
     {
       "name": "Savage Planet Tools"
@@ -31,7 +31,7 @@
     "styles/adapter.css"
   ],
   "manifest": "https://raw.githubusercontent.com/SavageGM/SavagePlanetAIIntegration/main/module.json",
-  "download": "https://github.com/SavageGM/SavagePlanetAIIntegration/archive/refs/heads/main.zip",
+  "download": "https://github.com/SavageGM/SavagePlanetAIIntegration/releases/download/v0.4.0/savage-planet-ai-adapter.zip",
   "readme": "https://github.com/SavageGM/SavagePlanetAIIntegration#readme",
   "url": "https://github.com/SavageGM/SavagePlanetAIIntegration",
   "type": "module"

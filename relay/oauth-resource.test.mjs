@@ -13,16 +13,18 @@ test('OAuth metadata and RS256 validation, scope and audience', async()=>{
  const publicJwk=await exportJWK(publicKey);
  publicJwk.kid='test-kid';publicJwk.alg='RS256';publicJwk.use='sig';
  const keyResolver=createLocalJWKSet({keys:[publicJwk]});
- const auth=createOAuthResource({issuer:issuer+'/',audience,jwksUri,allowedSubject,requiredScope:'gurps:read'},{keyResolver});
+ const auth=createOAuthResource({issuer:issuer+'/',audience,jwksUri,allowedSubject,requiredScope:'gurps:read',writeScope:'canon:write'},{keyResolver});
  assert.equal(auth.metadata.resource,audience);
  assert.deepEqual(auth.metadata.authorization_servers,[issuer]);
  assert.equal(auth.metadataURL,'https://mcp.example.test/.well-known/oauth-protected-resource');
+ assert.deepEqual(auth.metadata.scopes_supported,['gurps:read','canon:write']);
  assert.match(auth.challenge(),/resource_metadata=/);
  const sign=(claims={})=>new SignJWT({scope:'gurps:read',...claims})
   .setProtectedHeader({alg:'RS256',kid:'test-kid'})
   .setIssuer(issuer+'/').setAudience(audience).setSubject('single-gm')
   .setIssuedAt().setExpirationTime('5m').sign(privateKey);
- assert.deepEqual(await auth.verify(await sign()),{ok:true,subject:'single-gm'});
+ const verified=await auth.verify(await sign());
+ assert.equal(verified.ok,true);assert.equal(verified.subject,'single-gm');assert.ok(verified.scopes.has('gurps:read'));
  assert.equal((await auth.verify(await sign({scope:'other:read'}))).reason,'insufficient_scope');
  const wrongAud=await new SignJWT({scope:'gurps:read'}).setProtectedHeader({alg:'RS256',kid:'test-kid'})
   .setIssuer(issuer+'/').setAudience('https://another.example/mcp').setSubject('single-gm')

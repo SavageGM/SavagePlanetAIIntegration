@@ -63,7 +63,7 @@ In the GM client's **Game Settings → Configure Settings → Module Settings �
 
 - Bridge URL: change the `https://` URL to `wss://` and append `/bridge`, for example `wss://example.trycloudflare.com/bridge`.
 - Bridge secret: use the `BRIDGE_TOKEN` displayed in PowerShell window A.
-- Enable external read-only bridge. Then reopen the diagnostics panel.
+- Enable the external canon bridge. Then reopen the diagnostics panel.
 
 Expected status: `External bridge: connected`. Do **not** use your `MCP_TOKEN` as the bridge secret.
 

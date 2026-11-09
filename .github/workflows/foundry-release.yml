@@ -1,0 +1,58 @@
+name: Publish Foundry module release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - module.json
+      - scripts/**
+      - styles/**
+      - README.md
+      - OPEN_DIAGNOSTICS_MACRO.js
+      - .github/workflows/foundry-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Read manifest version
+        id: manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest_version="$(node -p "require('./module.json').version")"
+          echo "tag=v${manifest_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Foundry module archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/scripts package/styles
+          cp module.json README.md OPEN_DIAGNOSTICS_MACRO.js package/
+          cp scripts/adapter.js scripts/extract.mjs scripts/actor-operations.mjs scripts/bridge.mjs scripts/journal-sync.mjs package/scripts/
+          cp styles/adapter.css package/styles/
+          (cd package && zip -r ../savage-planet-ai-adapter.zip .)
+          unzip -l savage-planet-ai-adapter.zip
+
+      - name: Publish GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag="${{ steps.manifest.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to replace immutable release assets."
+            exit 1
+          fi
+          gh release create "$tag" \
+            savage-planet-ai-adapter.zip module.json \
+            --target "$GITHUB_SHA" \
+            --title "Savage Planet AI Adapter $tag" \
+            --generate-notes
