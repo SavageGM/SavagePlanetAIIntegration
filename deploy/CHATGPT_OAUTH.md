@@ -2,7 +2,7 @@
 
 **Status: resource-server implementation only.** This project does **not** provide its own authorization server, an OAuth login UI, authorization-code+PKCE flow, client registration, or refresh-token issuance. Supply those through a properly configured OAuth 2.1 identity provider. ChatGPT connection and live OAuth login are **not yet tested**.
 
-The Foundry module is v0.4.0 and the Node relay package is v0.3.0. Static-token mode remains available.
+The Foundry module is v0.4.1 and the Node relay package is v0.3.0. Static-token mode remains available.
 
 ## Design
 

@@ -35,6 +35,15 @@ test('journal status detects missing, existing, and actor conflicts',()=>{
  assert.equal(getCanonJournalStatus(g,{canonicalId,actorId}).status,'conflict');
 });
 
+test('journal status blocks an unmanaged exact-name journal from being duplicated',()=>{
+ const g=game();
+ g.journal.contents.push({id:'JOURNAL000000009',name:'  Belladonna   Marshall  ',folder:{id:'FOLDER0000000009'},getFlag:()=>null});
+ const status=getCanonJournalStatus(g,{canonicalId,actorId});
+ assert.equal(status.status,'conflict');
+ assert.equal(status.reason,'unmanaged-name-match');
+ assert.equal(status.matches[0].id,'JOURNAL000000009');
+});
+
 test('creation makes one folder and journal, then safely skips duplicate',async()=>{
  const g=game();let folderCreates=0,journalCreates=0;
  const FolderClass={create:async data=>{folderCreates++;const folder={id:'FOLDER0000000001',...data,getFlag:(scope,key)=>data.flags?.[scope]?.[key]};g.folders.contents.push(folder);return folder;}};
@@ -46,6 +55,14 @@ test('creation makes one folder and journal, then safely skips duplicate',async(
  assert.equal(second.reason,'exists');
  assert.equal(folderCreates,1);
  assert.equal(journalCreates,1);
+});
+
+test('creation skips an unmanaged exact-name journal',async()=>{
+ const g=game();g.journal.contents.push({id:'JOURNAL000000009',name:'Belladonna Marshall',folder:null,getFlag:()=>null});
+ const result=await createCanonCharacterJournal(g,payload(),{FolderClass:{create:async()=>{throw new Error('must not create');}},JournalEntryClass:{create:async()=>{throw new Error('must not create');}}});
+ assert.equal(result.created,false);
+ assert.equal(result.reason,'conflict');
+ assert.equal(result.status.reason,'unmanaged-name-match');
 });
 
 test('creation requires exact confirmation and safe URLs',()=>{

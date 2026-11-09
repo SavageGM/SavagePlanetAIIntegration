@@ -102,7 +102,7 @@ Scabard access keys expire after 24 hours. On the Windows relay host, run `Set-S
 
 The local canon-registry loader reserves stable mappings between canonical IDs, Scabard page identities, and Foundry document identities. It rejects duplicate platform identities.
 
-## Scabard character journals (v0.4.0)
+## Scabard character journals (v0.4.1)
 
-`canonPlanCharacterJournal` checks one confirmed mapping and reports whether a journal would be created, the target folder, and page names without returning secret text. `canonCreateCharacterJournal` creates the missing entry in `Scabard Characters` with Overview, Description, optional Secrets, optional GM Secrets, and optional Image pages. All entries and pages default to GM-only. Overview contains a clickable `@UUID[Actor.…]` link to the mapped Actor. Imported text is HTML-escaped, and existing canonical entries are returned as `exists` or `conflict` rather than modified.
+`canonPlanCharacterJournal` checks one confirmed mapping and reports whether a journal would be created, the target folder, and page names without returning secret text. `canonCreateCharacterJournal` creates the missing entry in `Scabard Characters` with Overview, Description, optional Secrets, optional GM Secrets, and optional Image pages. All entries and pages default to GM-only. Overview contains a clickable `@UUID[Actor.…]` link to the mapped Actor. Imported text is HTML-escaped, and existing canonical entries are returned as `exists` or `conflict` rather than modified. An exact normalized-name match without canon flags is also treated as a migration conflict, preventing duplicate journals created before Canon Sync tagging existed.
 

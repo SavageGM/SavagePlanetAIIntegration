@@ -24,6 +24,7 @@ const textHTML=value=>{
  return clean.split(/\n{2,}/).map(part=>`<p>${escapeHTML(part).replaceAll('\n','<br>')}</p>`).join('');
 };
 const flagOf=document=>document?.getFlag?.(MODULE_ID,FLAG_KEY)??document?.flags?.[MODULE_ID]?.[FLAG_KEY]??document?._source?.flags?.[MODULE_ID]?.[FLAG_KEY]??null;
+const normalizedName=value=>String(value??'').normalize('NFKC').toLocaleLowerCase('en-US').replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim();
 
 export function validateJournalIdentity(args){
  if(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(key=>!['canonicalId','actorId'].includes(key)))throw new Error('Invalid journal identity arguments');
@@ -59,6 +60,8 @@ export function getCanonJournalStatus(game,args){
  const identity=validateJournalIdentity(args);const actor=actorFor(game,identity.actorId);const matches=matchingJournals(game,identity.canonicalId);
  if(matches.length>1)return {status:'conflict',canonicalId:identity.canonicalId,actor:{id:actor.id,name:actor.name},matches:matches.map(entry=>({id:entry.id,name:entry.name,folderId:entry.folder?.id??null}))};
  if(matches.length===1){const entry=matches[0],flag=flagOf(entry);return {status:flag?.actorId===identity.actorId?'exists':'conflict',canonicalId:identity.canonicalId,actor:{id:actor.id,name:actor.name},journal:{id:entry.id,name:entry.name,folderId:entry.folder?.id??null,actorId:flag?.actorId??null}};}
+ const unmanagedNameMatches=[...(game.journal?.contents??[])].filter(entry=>!flagOf(entry)&&normalizedName(entry.name)===normalizedName(actor.name));
+ if(unmanagedNameMatches.length)return {status:'conflict',reason:'unmanaged-name-match',canonicalId:identity.canonicalId,actor:{id:actor.id,name:actor.name},matches:unmanagedNameMatches.map(entry=>({id:entry.id,name:entry.name,folderId:entry.folder?.id??null}))};
  return {status:'missing',canonicalId:identity.canonicalId,actor:{id:actor.id,name:actor.name}};
 }
 
