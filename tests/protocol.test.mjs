@@ -7,9 +7,10 @@ test('MCP initialize/list',async()=>{
  const initialized=await handleMcp(call('initialize'),broker);
  assert.equal(initialized.result.protocolVersion,'2025-06-18');
  const tools=(await handleMcp(call('tools/list'),broker)).result.tools;
- assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals','scabardListCampaigns','scabardGetCampaign','scabardListPages','scabardGetPage','canonListMappings','canonGetCharacter','canonCompareCharacter','canonPlanCharacterJournal','canonCreateCharacterJournal']);
- assert.ok(tools.filter(x=>x.name!=='canonCreateCharacterJournal').every(x=>x.annotations.readOnlyHint));
+ assert.deepEqual(tools.map(x=>x.name),['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals','scabardListCampaigns','scabardGetCampaign','scabardListPages','scabardGetPage','canonListMappings','canonGetCharacter','canonCompareCharacter','canonPlanCharacterJournal','canonCreateCharacterJournal','canonAdoptCharacterJournal']);
+ assert.ok(tools.filter(x=>!['canonCreateCharacterJournal','canonAdoptCharacterJournal'].includes(x.name)).every(x=>x.annotations.readOnlyHint));
  assert.equal(tools.find(x=>x.name==='canonCreateCharacterJournal').annotations.readOnlyHint,false);
+ assert.equal(tools.find(x=>x.name==='canonAdoptCharacterJournal').annotations.readOnlyHint,false);
 });
 test('read-only calls and strict arguments',async()=>{
  const good=await handleMcp(call('tools/call',{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc'}}),broker);
@@ -22,7 +23,7 @@ test('read-only calls and strict arguments',async()=>{
   const response=await handleMcp(call('tools/call',args),broker);
   assert.equal(response.error.code,-32602);
  }
- for(const args of [{name:'canonListMappings',arguments:{limit:0}},{name:'canonListMappings',arguments:{query:''}},{name:'canonGetCharacter',arguments:{canonicalId:'bad'}},{name:'canonGetCharacter',arguments:{canonicalId:'character:1',extra:true}},{name:'canonCompareCharacter',arguments:{canonicalId:'bad'}},{name:'canonPlanCharacterJournal',arguments:{canonicalId:'bad'}},{name:'canonCreateCharacterJournal',arguments:{canonicalId:'character:1',confirmation:'yes'}}]){
+ for(const args of [{name:'canonListMappings',arguments:{limit:0}},{name:'canonListMappings',arguments:{query:''}},{name:'canonGetCharacter',arguments:{canonicalId:'bad'}},{name:'canonGetCharacter',arguments:{canonicalId:'character:1',extra:true}},{name:'canonCompareCharacter',arguments:{canonicalId:'bad'}},{name:'canonPlanCharacterJournal',arguments:{canonicalId:'bad'}},{name:'canonCreateCharacterJournal',arguments:{canonicalId:'character:1',confirmation:'yes'}},{name:'canonAdoptCharacterJournal',arguments:{canonicalId:'character:1',journalId:'bad',confirmation:'ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL'}}]){
   const response=await handleMcp(call('tools/call',args),broker);
   assert.equal(response.error.code,-32602);
  }
@@ -44,6 +45,8 @@ test('Canon arguments are normalized and routed read-only',async()=>{
  assert.deepEqual(plan.result.structuredContent.args,{canonicalId:'character:4499025'});
  const create=await handleMcp(call('tools/call',{name:'canonCreateCharacterJournal',arguments:{canonicalId:'character:4499025',confirmation:'CREATE_MISSING_SCABARD_CHARACTER_JOURNAL'}}),broker);
  assert.deepEqual(create.result.structuredContent.args,{canonicalId:'character:4499025',confirmation:'CREATE_MISSING_SCABARD_CHARACTER_JOURNAL'});
+ const adopt=await handleMcp(call('tools/call',{name:'canonAdoptCharacterJournal',arguments:{canonicalId:'character:4499025',journalId:'aEYDnSh7IeSE65Bs',confirmation:'ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL'}}),broker);
+ assert.deepEqual(adopt.result.structuredContent.args,{canonicalId:'character:4499025',journalId:'aEYDnSh7IeSE65Bs',confirmation:'ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL'});
 });
 test('journal pagination and filter arguments',async()=>{
  const response=await handleMcp(call('tools/call',{name:'listJournals',arguments:{offset:200,limit:75,query:'  Cheyenne  ',folderId:'RyqHyckQHV6Hy9fa'}}),broker);
@@ -60,9 +63,10 @@ test('notifications and offline responses',async()=>{
 
 test('OAuth mode advertises read and separate write security requirements',async()=>{
  const response=await handleMcp(call('tools/list'),broker,{oauthScope:'gurps:read',oauthWriteScope:'canon:write'});
- assert.equal(response.result.tools.length,16);
+ assert.equal(response.result.tools.length,17);
  for(const tool of response.result.tools){
-  assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:tool.name==='canonCreateCharacterJournal'?['gurps:read','canon:write']:['gurps:read']}]);
+  assert.deepEqual(tool._meta.securitySchemes,[{type:'oauth2',scopes:['canonCreateCharacterJournal','canonAdoptCharacterJournal'].includes(tool.name)?['gurps:read','canon:write']:['gurps:read']}]);
  }
  assert.equal(response.result.tools.find(x=>x.name==='canonCreateCharacterJournal').annotations.readOnlyHint,false);
+ assert.equal(response.result.tools.find(x=>x.name==='canonAdoptCharacterJournal').annotations.readOnlyHint,false);
 });

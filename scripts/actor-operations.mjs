@@ -1,7 +1,7 @@
 import {extractActor,validateActor} from './extract.mjs';
-import {createCanonCharacterJournal,getCanonJournalStatus} from './journal-sync.mjs';
+import {adoptCanonCharacterJournal,createCanonCharacterJournal,getCanonJournalStatus} from './journal-sync.mjs';
 export const READ_OP_NAMES=Object.freeze(['getActor','listActors','getSkills','getAttacks','getEquipment','getHitLocations','listJournals','getCanonJournalStatus']);
-export const WRITE_OP_NAMES=Object.freeze(['createCanonCharacterJournal']);
+export const WRITE_OP_NAMES=Object.freeze(['createCanonCharacterJournal','adoptCanonCharacterJournal']);
 export const OP_NAMES=Object.freeze([...READ_OP_NAMES,...WRITE_OP_NAMES]);
 function authorize(game){if(!game?.user?.isGM)throw new Error('GM permission required');if(game.system?.id!=='gurps')throw new Error('GURPS Game Aid required');}
 function actorById(game,id){if(typeof id!=='string'||!/^[a-zA-Z0-9]{16}$/.test(id))throw new Error('Invalid actor ID');
@@ -37,5 +37,6 @@ export async function executeOperation(game,name,args={}){
  authorize(game);
  if(READ_OP_NAMES.includes(name))return executeReadOperation(game,name,args);
  if(name==='createCanonCharacterJournal')return createCanonCharacterJournal(game,args);
+ if(name==='adoptCanonCharacterJournal')return adoptCanonCharacterJournal(game,args);
  throw new Error('Unknown or forbidden operation');
 }

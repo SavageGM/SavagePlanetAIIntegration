@@ -2,6 +2,7 @@ const MODULE_ID='savage-planet-ai-adapter';
 const FLAG_KEY='canonSync';
 export const JOURNAL_FOLDER_NAME='Scabard Characters';
 export const JOURNAL_WRITE_CONFIRMATION='CREATE_MISSING_SCABARD_CHARACTER_JOURNAL';
+export const JOURNAL_ADOPT_CONFIRMATION='ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL';
 
 const own=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
 const escapeHTML=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
@@ -47,6 +48,16 @@ export function validateJournalCreate(args){
   imageURL:safeURL(args.imageURL,'image URL'),
   scabard:{campaignId:args.scabard.campaignId,concept:'character',thingId:args.scabard.thingId,uri:safeURL(args.scabard.uri,'Scabard URI'),lastEditedUnix:args.scabard.lastEditedUnix??null}
  };
+}
+
+export function validateJournalAdopt(args){
+ if(!args||typeof args!=='object'||Array.isArray(args))throw new Error('Invalid journal adoption arguments');
+ const allowed=['confirmation','canonicalId','actorId','journalId','name','scabard'];
+ if(Object.keys(args).some(key=>!allowed.includes(key))||args.confirmation!==JOURNAL_ADOPT_CONFIRMATION)throw new Error('Explicit journal adoption confirmation is required');
+ if(!args.scabard||typeof args.scabard!=='object'||Array.isArray(args.scabard)||Object.keys(args.scabard).some(key=>!['campaignId','concept','thingId','uri','lastEditedUnix'].includes(key)))throw new Error('Invalid Scabard identity');
+ if(!Number.isSafeInteger(args.scabard.campaignId)||args.scabard.campaignId<1||args.scabard.concept!=='character'||!Number.isSafeInteger(args.scabard.thingId)||args.scabard.thingId<1)throw new Error('Invalid Scabard identity');
+ if(args.scabard.lastEditedUnix!==null&&args.scabard.lastEditedUnix!==undefined&&(!Number.isSafeInteger(args.scabard.lastEditedUnix)||args.scabard.lastEditedUnix<0))throw new Error('Invalid Scabard edit timestamp');
+ return {confirmation:args.confirmation,canonicalId:safeCanonicalId(args.canonicalId),actorId:safeId(args.actorId,'actor ID'),journalId:safeId(args.journalId,'journal ID'),name:boundedString(args.name,'character name',200,{empty:false}),scabard:{campaignId:args.scabard.campaignId,concept:'character',thingId:args.scabard.thingId,uri:safeURL(args.scabard.uri,'Scabard URI'),lastEditedUnix:args.scabard.lastEditedUnix??null}};
 }
 
 function actorFor(game,actorId){
@@ -98,6 +109,31 @@ export async function createCanonCharacterJournal(game,args,{FolderClass=globalT
  const entry=await JournalEntryClass.create(buildCharacterJournalData(data,folder.id));
  if(!entry?.id)throw new Error('Character journal could not be created');
  return {created:true,canonicalId:data.canonicalId,journal:{id:entry.id,name:entry.name??data.name,folderId:folder.id},actor:{id:data.actorId,name:data.name},pages:entry.pages?.size??entry.pages?.length??buildCharacterJournalData(data,folder.id).pages.length};
+}
+
+export async function adoptCanonCharacterJournal(game,args){
+ const data=validateJournalAdopt(args);const actor=actorFor(game,data.actorId);
+ const entry=game.journal?.get?.(data.journalId)??[...(game.journal?.contents??[])].find(journal=>journal.id===data.journalId);
+ if(!entry)throw new Error('Foundry journal to adopt was not found');
+ if(normalizedName(entry.name)!==normalizedName(actor.name)||normalizedName(entry.name)!==normalizedName(data.name))throw new Error('Journal, actor, and canonical names do not match');
+ const flag={canonicalId:data.canonicalId,actorId:data.actorId,source:'scabard',adopted:true,scabard:data.scabard};
+ const existingFlag=flagOf(entry);
+ if(existingFlag&&(existingFlag.canonicalId!==data.canonicalId||existingFlag.actorId!==data.actorId))return {adopted:false,reason:'conflict',journal:{id:entry.id,name:entry.name},existing:{canonicalId:existingFlag.canonicalId??null,actorId:existingFlag.actorId??null}};
+ if(!existingFlag){
+  if(typeof entry.update!=='function')throw new Error('Foundry journal update API is unavailable');
+  await entry.update({flags:{[MODULE_ID]:{[FLAG_KEY]:flag}}});
+ }
+ const pages=[...(entry.pages?.contents??entry.pages??[])];
+ let linkPage=pages.find(page=>flagOf(page)?.role==='actor-link');
+ let linkPageCreated=false;
+ if(!linkPage){
+  if(typeof entry.createEmbeddedDocuments!=='function')throw new Error('Foundry journal page creation API is unavailable');
+  const actorLabel=data.name.replace(/[\[\]{}]/g,'');const actorLink=`@UUID[Actor.${data.actorId}]{${actorLabel}}`;
+  const sourceLink=data.scabard.uri?`<p><strong>Scabard:</strong> <a href="${escapeHTML(data.scabard.uri)}" target="_blank" rel="noopener noreferrer">Open source page</a></p>`:`<p><strong>Scabard character ID:</strong> ${data.scabard.thingId}</p>`;
+  const created=await entry.createEmbeddedDocuments('JournalEntryPage',[{name:'Canon Sync',type:'text',text:{content:`<p><strong>Foundry Actor:</strong> ${actorLink}</p>${sourceLink}`,format:1},ownership:{default:0},flags:{[MODULE_ID]:{[FLAG_KEY]:{...flag,role:'actor-link',page:'Canon Sync',secret:false}}}}]);
+  linkPage=created?.[0]??null;linkPageCreated=true;
+ }
+ return {adopted:true,alreadyAdopted:Boolean(existingFlag),canonicalId:data.canonicalId,journal:{id:entry.id,name:entry.name,folderId:entry.folder?.id??null},actor:{id:actor.id,name:actor.name},linkPage:{id:linkPage?.id??null,name:linkPage?.name??'Canon Sync',created:linkPageCreated},existingPagesPreserved:true};
 }
 
 export const JOURNAL_MODULE_ID=MODULE_ID;

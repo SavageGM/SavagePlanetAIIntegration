@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {buildCharacterJournalData,createCanonCharacterJournal,getCanonJournalStatus,JOURNAL_WRITE_CONFIRMATION} from '../scripts/journal-sync.mjs';
+import {adoptCanonCharacterJournal,buildCharacterJournalData,createCanonCharacterJournal,getCanonJournalStatus,JOURNAL_ADOPT_CONFIRMATION,JOURNAL_WRITE_CONFIRMATION} from '../scripts/journal-sync.mjs';
 
 const actorId='Ow9mrwRNhmKZuXbc';
 const canonicalId='character:4499025';
@@ -68,4 +68,27 @@ test('creation skips an unmanaged exact-name journal',async()=>{
 test('creation requires exact confirmation and safe URLs',()=>{
  assert.throws(()=>buildCharacterJournalData(payload({confirmation:'yes'})),/confirmation/i);
  assert.throws(()=>buildCharacterJournalData(payload({imageURL:'javascript:alert(1)'})),/image URL/i);
+});
+
+test('adoption flags an exact legacy journal and adds one GM-only actor link page',async()=>{
+ const g=game();let savedFlag=null;const createdPages=[];
+ const entry={id:'JOURNAL000000009',name:'Belladonna Marshall',folder:{id:'FOLDER0000000009'},pages:{contents:[{id:'LEGACYPAGE000001',name:'Legacy Notes',getFlag:()=>null}]},getFlag:()=>savedFlag,update:async change=>{savedFlag=change.flags['savage-planet-ai-adapter'].canonSync;},createEmbeddedDocuments:async(type,pages)=>{assert.equal(type,'JournalEntryPage');createdPages.push(...pages);return pages.map((page,index)=>({id:`CANONPAGE000000${index}`, ...page,getFlag:(scope,key)=>page.flags?.[scope]?.[key]}));}};
+ g.journal.contents.push(entry);g.journal.get=id=>id===entry.id?entry:null;
+ const args={confirmation:JOURNAL_ADOPT_CONFIRMATION,canonicalId,actorId,journalId:entry.id,name:'Belladonna Marshall',scabard:{campaignId:2543388,concept:'character',thingId:4499025,uri:null,lastEditedUnix:123}};
+ const result=await adoptCanonCharacterJournal(g,args);
+ assert.equal(result.adopted,true);assert.equal(result.existingPagesPreserved,true);assert.equal(result.linkPage.created,true);
+ assert.equal(savedFlag.canonicalId,canonicalId);assert.equal(savedFlag.actorId,actorId);assert.equal(savedFlag.adopted,true);
+ assert.equal(createdPages.length,1);assert.equal(createdPages[0].name,'Canon Sync');assert.equal(createdPages[0].ownership.default,0);
+ assert.match(createdPages[0].text.content,/@UUID\[Actor\.Ow9mrwRNhmKZuXbc\]\{Belladonna Marshall\}/);
+ assert.equal(entry.pages.contents[0].name,'Legacy Notes');
+});
+
+test('adoption refuses a different journal name or existing conflicting flag',async()=>{
+ const g=game();const base={id:'JOURNAL000000009',name:'Someone Else',folder:null,pages:{contents:[]},getFlag:()=>null,update:async()=>{},createEmbeddedDocuments:async()=>[]};
+ g.journal.contents.push(base);g.journal.get=()=>base;
+ const args={confirmation:JOURNAL_ADOPT_CONFIRMATION,canonicalId,actorId,journalId:base.id,name:'Belladonna Marshall',scabard:{campaignId:2543388,concept:'character',thingId:4499025,uri:null,lastEditedUnix:null}};
+ await assert.rejects(adoptCanonCharacterJournal(g,args),/names do not match/i);
+ base.name='Belladonna Marshall';base.getFlag=()=>({canonicalId:'character:1',actorId:'AAAAAAAAAAAAAAAA'});
+ const result=await adoptCanonCharacterJournal(g,args);
+ assert.equal(result.adopted,false);assert.equal(result.reason,'conflict');
 });

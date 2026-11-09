@@ -37,6 +37,16 @@ export class ToolRouter{
    const scabard=await this.scabardClient.getPage(mapping.scabard.campaignId,mapping.scabard.concept,mapping.scabard.thingId);
    return this.foundryBroker.request('createCanonCharacterJournal',journalPayload(mapping,scabard?.main??{},args.confirmation));
   }
+  if(name==='canonAdoptCharacterJournal'){
+   const registry=this.registryLoader();
+   const mapping=registry.mappings.find(x=>x.canonicalId===args.canonicalId&&x.status==='confirmed');
+   if(!mapping)throw new Error('Confirmed canonical character mapping not found.');
+   if(mapping.foundry.documentType!=='Actor'||mapping.foundry.worldId!==registry.sources?.foundryWorld?.id)throw new Error('Confirmed mapping does not target the connected Foundry world.');
+   const status=await this.foundryBroker.request('getCanonJournalStatus',{canonicalId:mapping.canonicalId,actorId:mapping.foundry.documentId});
+   if(status.status!=='conflict'||status.reason!=='unmanaged-name-match'||!status.matches?.some(match=>match.id===args.journalId))return {adopted:false,reason:'journal-is-not-an-exact-unmanaged-match',status};
+   const scabard=await this.scabardClient.getPage(mapping.scabard.campaignId,mapping.scabard.concept,mapping.scabard.thingId);
+   return this.foundryBroker.request('adoptCanonCharacterJournal',adoptionPayload(mapping,scabard?.main??{},args.journalId,args.confirmation));
+  }
   if(!SCABARD_NAMES.includes(name))return this.foundryBroker.request(name,args);
   if(name==='scabardListCampaigns')return this.scabardClient.listCampaigns();
   if(name==='scabardGetCampaign')return this.scabardClient.getCampaign(args.campaignId);
@@ -51,6 +61,10 @@ function plannedPages(page){return ['Overview',...(hasText(page.rawDescription)|
 function journalPayload(mapping,page,confirmation){
  const sourceURI=typeof page.uri==='string'&&/^https?:\/\//i.test(page.uri)?page.uri:null;
  return {confirmation,canonicalId:mapping.canonicalId,actorId:mapping.foundry.documentId,name:mapping.name,aliases:aliasesOf(page.aliases),briefSummary:page.briefSummary??'',description:page.rawDescription||page.description||'',secrets:page.secrets??'',gmSecrets:page.gmSecrets??'',imageURL:page.imageURL??null,scabard:{campaignId:mapping.scabard.campaignId,concept:'character',thingId:mapping.scabard.thingId,uri:sourceURI,lastEditedUnix:Number.isSafeInteger(page.dateLastEditedUnix)?page.dateLastEditedUnix:null}};
+}
+function adoptionPayload(mapping,page,journalId,confirmation){
+ const sourceURI=typeof page.uri==='string'&&/^https?:\/\//i.test(page.uri)?page.uri:null;
+ return {confirmation,canonicalId:mapping.canonicalId,actorId:mapping.foundry.documentId,journalId,name:mapping.name,scabard:{campaignId:mapping.scabard.campaignId,concept:'character',thingId:mapping.scabard.thingId,uri:sourceURI,lastEditedUnix:Number.isSafeInteger(page.dateLastEditedUnix)?page.dateLastEditedUnix:null}};
 }
 
 const normalize=value=>String(value??'').normalize('NFKC').toLocaleLowerCase('en-US').replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim();

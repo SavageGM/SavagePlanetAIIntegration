@@ -87,7 +87,7 @@ export function startServer({port=PORT,host=HOST,broker=new BridgeBroker(),scaba
   }
   if(!String(req.headers['content-type']??'').startsWith('application/json')){res.writeHead(415);res.end();return;}
   try{const msg=JSON.parse(await readBody(req));
-   if(oauth&&msg?.method==='tools/call'&&msg?.params?.name==='canonCreateCharacterJournal'&&!auth.scopes?.has(oauth.writeScope)){
+   if(oauth&&msg?.method==='tools/call'&&['canonCreateCharacterJournal','canonAdoptCharacterJournal'].includes(msg?.params?.name)&&!auth.scopes?.has(oauth.writeScope)){
     res.writeHead(403,{'WWW-Authenticate':oauth.challenge(oauth.writeScope)});res.end();return;
    }
    const response=await handleMcp(msg,toolRouter,oauth?{oauthScope:oauth.requiredScope,oauthWriteScope:oauth.writeScope}:{});

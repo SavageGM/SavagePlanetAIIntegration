@@ -89,3 +89,16 @@ test('canon journal create sends confirmed mapped content and skips existing jou
  const existingRouter=new ToolRouter({foundryBroker:{request:async()=>({status:'exists',journal:{id:'JOURNAL000000001'}})},scabardClient:{getPage:async()=>{throw new Error('must not fetch');}},registryLoader:()=>registry});
  assert.deepEqual(await existingRouter.request('canonCreateCharacterJournal',{canonicalId:'character:4499025',confirmation:'CREATE_MISSING_SCABARD_CHARACTER_JOURNAL'}),{created:false,reason:'exists',status:{status:'exists',journal:{id:'JOURNAL000000001'}}});
 });
+
+test('canon journal adoption requires the selected exact unmanaged match',async()=>{
+ const calls=[];const journalId='aEYDnSh7IeSE65Bs';
+ const router=new ToolRouter({
+  foundryBroker:{request:async(name,args)=>{calls.push({name,args});if(name==='getCanonJournalStatus')return {status:'conflict',reason:'unmanaged-name-match',matches:[{id:journalId,name:'Belladonna Marshall'}]};return {adopted:true,journal:{id:journalId},linkPage:{name:'Canon Sync',created:true}};}},
+  scabardClient:{getPage:async()=>({main:{dateLastEditedUnix:123}})},registryLoader:()=>registry
+ });
+ const result=await router.request('canonAdoptCharacterJournal',{canonicalId:'character:4499025',journalId,confirmation:'ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL'});
+ assert.equal(result.adopted,true);assert.equal(calls[1].name,'adoptCanonCharacterJournal');assert.equal(calls[1].args.journalId,journalId);assert.equal(calls[1].args.actorId,'Ow9mrwRNhmKZuXbc');
+ const rejected=new ToolRouter({foundryBroker:{request:async()=>({status:'missing'})},scabardClient:{getPage:async()=>{throw new Error('must not fetch');}},registryLoader:()=>registry});
+ const no=await rejected.request('canonAdoptCharacterJournal',{canonicalId:'character:4499025',journalId,confirmation:'ADOPT_EXISTING_SCABARD_CHARACTER_JOURNAL'});
+ assert.equal(no.adopted,false);assert.equal(no.reason,'journal-is-not-an-exact-unmanaged-match');
+});
