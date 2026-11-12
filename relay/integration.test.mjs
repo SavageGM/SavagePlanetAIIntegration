@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {WebSocket} from 'ws';
 process.env.BRIDGE_TOKEN=randomBytes(32).toString('hex');
 process.env.MCP_TOKEN=randomBytes(32).toString('hex');
@@ -10,6 +12,7 @@ process.env.BRIDGE_ALLOWED_ORIGINS='http://localhost:3000';
 // Never let an integration-test server overwrite the live Windows control
 // panel's bridge-status.json when tests run on the relay host.
 process.env.BRIDGE_STATUS_FILE='disabled';
+process.env.CANON_REGISTRY_FILE=join(tmpdir(),'savage-planet-integration-missing-registry.json');
 const {startServer}=await import('./server.mjs');
 test('MCP and authenticated bridge roundtrip',async()=>{
  const app=startServer({port:0,host:'127.0.0.1'});
@@ -34,6 +37,10 @@ test('MCP and authenticated bridge roundtrip',async()=>{
   const next=()=>new Promise((resolve,reject)=>{socket.once('message',m=>{try{resolve(JSON.parse(m.toString()));}catch(e){reject(e);}});});
   const ready=next();socket.send(JSON.stringify({kind:'hello',protocol:1,token:process.env.BRIDGE_TOKEN}));
   assert.equal((await ready).kind,'ready');
+  const uiList=next();socket.send(JSON.stringify({kind:'client-request',id:'ui-list',operation:'canonListMappings',args:{offset:0,limit:200}}));
+  const uiResponse=await uiList;assert.equal(uiResponse.kind,'client-response');assert.equal(uiResponse.ok,true);assert.equal(uiResponse.result.total,0);
+  const uiDenied=next();socket.send(JSON.stringify({kind:'client-request',id:'ui-denied',operation:'scabardGetPage',args:{campaignId:1,concept:'character',thingId:1}}));
+  const deniedResponse=await uiDenied;assert.equal(deniedResponse.ok,false);assert.match(deniedResponse.error,/not available/i);
   const inbound=next(),outbound=call('tools/call',{name:'getActor',arguments:{actorId:'Ow9mrwRNhmKZuXbc'}});
   const req=await inbound;assert.equal(req.operation,'getActor');
   socket.send(JSON.stringify({kind:'response',id:req.id,ok:true,result:{identity:{name:'Belladonna Marshall'},attributes:{ST:{display:9}}}}));

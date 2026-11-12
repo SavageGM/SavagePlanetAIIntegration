@@ -1,13 +1,13 @@
 # Savage Planet Canon Sync
 
-**Foundry VTT v14 Build 369 / GURPS Game Aid v0.18.27.** Savage Planet Canon Sync provides authenticated ChatGPT access to the connected Foundry GM world and a Scabard campaign account. World Anvil is not part of the architecture. Reads are non-mutating; the only write is explicit, confirmed creation of a missing character journal.
+**Foundry VTT v14 Build 369 / GURPS Game Aid v0.18.27.** Savage Planet Canon Sync provides authenticated ChatGPT access to the connected Foundry GM world and a Scabard campaign account. World Anvil is not part of the architecture. Reads are non-mutating; journal writes are limited to explicit, confirmed creation or safe adoption for confirmed character mappings.
 
 ## Implemented
 Foundry tools: `getActor`, `listActors`, `getSkills`, `getAttacks`, `getEquipment`, `getHitLocations`, and `listJournals`.
 
 Scabard tools: `scabardListCampaigns`, `scabardGetCampaign`, `scabardListPages`, and `scabardGetPage`.
 
-Joined canon tools: `canonListMappings`, `canonGetCharacter`, `canonCompareCharacter`, `canonPlanCharacterJournal`, and `canonCreateCharacterJournal`. These use only confirmed local mappings. The plan tool is read-only and never returns secret text. The create tool requires a separate write scope plus the exact confirmation phrase, creates a GM-only entry only when missing, and never updates or overwrites an existing journal.
+Joined canon tools: `canonListMappings`, `canonGetCharacter`, `canonCompareCharacter`, `canonPlanCharacterJournal`, `canonCreateCharacterJournal`, and `canonAdoptCharacterJournal`. These use only confirmed local mappings. The plan tool is read-only and never returns secret text. Create and Adopt require exact confirmation phrases; Create makes a GM-only entry only when missing, while Adopt preserves all legacy pages and adds the Actor link.
 
 There are no actor writes, Scabard writes, macro execution, rolls, scene changes, deletions, or automatic conflict resolution. Journal creation is deduplicated by canonical ID and stores its Scabard and Actor identities in module flags.
 
@@ -107,4 +107,10 @@ The local canon-registry loader reserves stable mappings between canonical IDs, 
 `canonPlanCharacterJournal` checks one confirmed mapping and reports whether a journal would be created, the target folder, and page names without returning secret text. `canonCreateCharacterJournal` creates the missing entry in `Scabard Characters` with Overview, Description, optional Secrets, optional GM Secrets, and optional Image pages. All entries and pages default to GM-only. Overview contains a clickable `@UUID[Actor.…]` link to the mapped Actor. Imported text is HTML-escaped, and existing canonical entries are returned as `exists` or `conflict` rather than modified. An exact normalized-name match without canon flags is also treated as a migration conflict, preventing duplicate journals created before Canon Sync tagging existed.
 
 `canonAdoptCharacterJournal` safely migrates one exact-name legacy journal. It adds canonical Scabard/Actor flags and one GM-only `Canon Sync` page with a clickable Actor link. It does not replace, rename, move, or edit any existing page.
+
+## GM Canon Journal Sync manager (v0.5.0)
+
+Open the adapter diagnostics and choose **Open Canon Journal Sync**. The manager loads up to 200 confirmed mappings from the authenticated local relay, evaluates each journal inside the live Foundry world, and labels it Linked, Missing, Existing journal needs adoption, Conflict, or Review. Missing entries receive a guarded Create action; a single exact-name unmanaged match receives a guarded Adopt action. Every write shows a GM confirmation dialog. Scabard credentials remain only on the relay host and are never stored in Foundry.
+
+The Foundry-to-relay UI channel accepts only mapping list, journal plan, journal create, and journal adopt operations. The relay revalidates every argument and confirmation phrase before routing a request.
 

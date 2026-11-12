@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {WebSocketServer} from 'ws';
 import {handleMcp} from './protocol.mjs';
-import {validateBridgeOperation} from './operations.mjs';
+import {validateBridgeOperation,validateTool} from './operations.mjs';
 import {createOAuthResource} from './oauth-resource.mjs';
 import {ScabardClient} from './scabard-client.mjs';
 import {ToolRouter} from './tool-router.mjs';
@@ -41,12 +41,14 @@ function writeBridgeStatus(connected){
 }
 const readBody=req=>new Promise((resolve,reject)=>{let data='',total=0;req.on('data',chunk=>{total+=chunk.length;if(total>100000){reject(new Error('Request too large'));req.destroy();return;}data+=chunk;});req.on('end',()=>resolve(data));req.on('error',reject);});
 export class BridgeBroker{
- constructor(){this.client=null;this.pending=new Map();}
+ constructor(){this.client=null;this.pending=new Map();this.clientRouter=null;this.clientInFlight=0;}
+ setClientRouter(router){this.clientRouter=router;}
  attach(ws){
   if(this.client){ws.close(1013,'Another GM is connected');return false;}
   this.client=ws;
   writeBridgeStatus(true);
-  ws.on('message',raw=>{let msg;try{msg=JSON.parse(raw.toString());}catch{return;}
+  ws.on('message',async raw=>{let msg;try{msg=JSON.parse(raw.toString());}catch{return;}
+   if(msg.kind==='client-request'){await this.handleClientRequest(ws,msg);return;}
    if(msg.kind!=='response'||typeof msg.id!=='string')return;const p=this.pending.get(msg.id);if(!p)return;
    this.pending.delete(msg.id);clearTimeout(p.timer);
    if(msg.ok===true&&msg.result&&typeof msg.result==='object')p.resolve(msg.result);
@@ -54,6 +56,15 @@ export class BridgeBroker{
   });
   ws.on('close',()=>{if(this.client!==ws)return;this.client=null;writeBridgeStatus(false);for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new Error('Foundry disconnected'));}this.pending.clear();});
   return true;
+ }
+ async handleClientRequest(ws,msg){
+  if(typeof msg.id!=='string'||msg.id.length>100||!this.clientRouter||this.clientInFlight>=8)return;
+  const allowed=['canonListMappings','canonPlanCharacterJournal','canonCreateCharacterJournal','canonAdoptCharacterJournal'];
+  if(!allowed.includes(msg.operation)){ws.send(JSON.stringify({kind:'client-response',id:msg.id,ok:false,error:'Relay operation is not available to the Foundry UI'}));return;}
+  this.clientInFlight++;
+  try{const args=validateTool(msg.operation,msg.args);const result=await this.clientRouter.request(msg.operation,args);if(ws.readyState===1)ws.send(JSON.stringify({kind:'client-response',id:msg.id,ok:true,result}));}
+  catch(error){if(ws.readyState===1)ws.send(JSON.stringify({kind:'client-response',id:msg.id,ok:false,error:String(error?.message??error).slice(0,250)}));}
+  finally{this.clientInFlight--;}
  }
  request(name,args){validateBridgeOperation(name,args);if(!this.client||this.client.readyState!==1)return Promise.reject(new Error('Foundry GM is not connected'));
   if(this.pending.size>=16)return Promise.reject(new Error('Too many pending requests'));
@@ -68,6 +79,7 @@ export class BridgeBroker{
 export function startServer({port=PORT,host=HOST,broker=new BridgeBroker(),scabardClient=ScabardClient.fromEnv()}={}){
  writeBridgeStatus(false);
  const toolRouter=new ToolRouter({foundryBroker:broker,scabardClient});
+ broker.setClientRouter(toolRouter);
  const wss=new WebSocketServer({noServer:true,maxPayload:1024*1024,perMessageDeflate:false});
  const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');

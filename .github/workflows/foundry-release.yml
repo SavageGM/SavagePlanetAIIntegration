@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           mkdir -p package/scripts package/styles
           cp module.json README.md OPEN_DIAGNOSTICS_MACRO.js package/
-          cp scripts/adapter.js scripts/extract.mjs scripts/actor-operations.mjs scripts/bridge.mjs scripts/journal-sync.mjs package/scripts/
+          cp scripts/adapter.js scripts/extract.mjs scripts/actor-operations.mjs scripts/bridge.mjs scripts/journal-sync.mjs scripts/canon-manager.mjs package/scripts/
           cp styles/adapter.css package/styles/
           (cd package && zip -r ../savage-planet-ai-adapter.zip .)
           unzip -l savage-planet-ai-adapter.zip
